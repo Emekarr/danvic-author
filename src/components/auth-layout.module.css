@@ -1,0 +1,51 @@
+/* Shared with the admin single-column authentication pattern. */
+.authLayout {
+  grid-template-columns: 1fr;
+  background: #fff;
+}
+
+.authLayout :global(.sb-login-panel) {
+  display: none;
+}
+
+.authLayout :global(.sb-login-form-wrap) {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 32px;
+  padding: 48px clamp(28px, 7vw, 112px);
+  background: #fff;
+}
+
+.authLayout :global(.sb-login-form) {
+  width: min(100%, 430px);
+}
+
+.authLayout :global(.sb-login-form h2) {
+  color: #172033;
+  font-size: clamp(28px, 2.5vw, 34px);
+  letter-spacing: -0.04em;
+}
+
+.authLayout :global(.sb-login-form > p:not(.sb-page-eyebrow)) {
+  margin-top: 10px;
+  color: #667085;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.authLayout :global(.sb-login-fields) {
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.authLayout :global(.sb-login-form .sb-button) {
+  min-height: 46px;
+}
+
+@media (max-width: 640px) {
+  .authLayout :global(.sb-login-form-wrap) {
+    padding: 40px 24px 52px;
+  }
+}

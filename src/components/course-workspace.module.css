@@ -1,0 +1,254 @@
+.dialog {
+  width: min(92vw, 680px) !important;
+}
+
+.editor {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: min(640px, calc(100dvh - 32px));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 22px;
+  border-bottom: 1px solid #e6eaf1;
+  background: #fff;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.mark {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #edf3ff;
+  color: var(--sb-primary-strong);
+}
+
+.mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  color: #596f9d;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h2 {
+  margin: 0;
+  color: #17233a;
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+
+.header p {
+  overflow: hidden;
+  max-width: 420px;
+  margin: 2px 0 0;
+  color: #7b879b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header :global(.sb-button) {
+  flex: 0 0 auto;
+}
+
+.body {
+  display: grid;
+  gap: 20px;
+  overflow-y: auto;
+  padding: 20px 22px 22px;
+  background: #fff;
+}
+
+.courseContext {
+  display: grid;
+  gap: 3px;
+  padding: 15px 17px;
+  border: 1px solid #dce7fb;
+  border-radius: 15px;
+  background: linear-gradient(110deg, #f2f6ff, #fafcff 75%);
+}
+
+.courseContext > span {
+  color: #5870a5;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.courseContext strong {
+  overflow: hidden;
+  color: #1a2a46;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.courseContext p {
+  margin: 2px 0 0;
+  color: #667085;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.section {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.section + .section {
+  padding-top: 20px;
+  border-top: 1px solid #e9edf3;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.sectionHead > span {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  background: #edf3ff;
+  color: var(--sb-primary-strong);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.sectionHead h3 {
+  margin: 0;
+  color: #29364d;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+.sectionHead p {
+  margin: 3px 0 0;
+  color: #7b879b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.details :global(.sb-field:first-child) {
+  grid-column: 1 / -1;
+}
+
+.details :global(.sb-label),
+.preferences :global(.sb-label) {
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.details :global(.sb-input) {
+  min-height: 42px;
+  border-color: #d8e0ec;
+  border-radius: 10px;
+}
+
+.preferences {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.preferences :global(.sb-field) {
+  position: relative;
+  min-width: 0;
+  gap: 6px;
+}
+
+.preferences :global(.sb-field:last-child) {
+  grid-column: 1 / -1;
+  max-width: 312px;
+}
+
+.preferences :global(.sb-custom-dropdown-trigger) {
+  min-height: 44px;
+}
+
+.preferences :global(.sb-custom-dropdown-trigger:hover),
+.preferences :global(.sb-custom-dropdown-trigger[aria-expanded='true']) {
+  border-color: #aebcd2;
+}
+
+.preferences :global(.sb-custom-dropdown-menu) {
+  z-index: 80;
+  max-height: 230px;
+  overflow-y: auto;
+  border-color: #d7e0ee;
+}
+
+.preferences :global(.sb-field:last-child .sb-custom-dropdown-menu) {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.preferences :global(.sb-field-hint) {
+  margin-top: 1px;
+  color: #758198;
+  font-size: 10.5px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid #e6eaf1;
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .details,
+  .preferences {
+    grid-template-columns: 1fr;
+  }
+
+  .preferences :global(.sb-field:last-child) {
+    grid-column: auto;
+    max-width: none;
+  }
+
+  .header,
+  .footer {
+    padding-inline: 18px;
+  }
+
+  .body {
+    padding: 18px;
+  }
+}
