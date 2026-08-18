@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRef, useState } from 'react'
 import type { Course, CourseParticipant } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
@@ -42,9 +43,9 @@ export function CourseWorkspace({
           <p>Publish, update, and review every authored learning experience.</p>
         </div>
         <div className="sb-page-actions">
-          <a href="/courses/new" className="sb-button sb-button--primary sb-button--md">
+          <Link href="/courses/new" className="sb-button sb-button--primary sb-button--md">
             Create course
-          </a>
+          </Link>
         </div>
       </header>
       <section className="ad-section ad-section--plain">
