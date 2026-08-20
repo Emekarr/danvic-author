@@ -5,6 +5,7 @@ import { Badge } from '@danvic/ui'
 import { ArrowRight, FilePlus2 } from 'lucide-react'
 import type { Assessment, AuthorPaymentTransaction, Course } from '@danvic/api-client'
 import { LiveCourseSchedule } from '@/components/live-course-schedule'
+import { courseStudioHref } from '@/lib/course-route'
 
 const formatStartsIn = (index: number) =>
   ['Starts in 10 mins', 'Starts in 35 mins', 'Starts in 1h 20m', 'Starts tomorrow'][index] ??
@@ -108,7 +109,7 @@ export function Overview({
               {recentCourses.map((course) => (
                 <Link
                   className="ad-overview-list-row"
-                  href={course.type === 'live' ? `/courses/${course.id}/live` : '/courses'}
+                  href={course.type === 'live' ? courseStudioHref(course.id) : '/courses'}
                   target={course.type === 'live' ? '_blank' : undefined}
                   rel={course.type === 'live' ? 'noopener noreferrer' : undefined}
                   key={course.id}

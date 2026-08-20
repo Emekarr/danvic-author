@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { notFound, usePathname, useRouter } from 'next/navigation'
-import { CourseLiveView, SessionLiveView } from '@/components/dynamic-views'
+import { SessionLiveView } from '@/components/dynamic-views'
 import { SubmissionsView } from '@/components/submissions-view'
 import { DashboardShell } from '@/components/dashboard-shell'
 
@@ -10,9 +10,6 @@ export function CatchAllClient() {
   const pathname = usePathname()
 
   if (pathname === '/') return <RootRedirect />
-
-  const courseLive = pathname.match(/^\/courses\/([^/]+)\/live$/)
-  if (courseLive) return <CourseLiveView courseId={courseLive[1] ?? ''} />
 
   const sessionLive = pathname.match(/^\/live-classes\/([^/]+)$/)
   if (sessionLive) return <SessionLiveView sessionId={sessionLive[1] ?? ''} />

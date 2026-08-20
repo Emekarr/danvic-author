@@ -7,6 +7,7 @@ import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, CustomDropdown, Field, Input } from '@danvic/ui'
 import { ArrowRight, CreditCard, Layers3, Pencil, Radio, Unlock, Users, X } from 'lucide-react'
 import styles from './course-workspace.module.css'
+import { courseStudioHref } from '@/lib/course-route'
 
 const LIVE_CLASS_DURATIONS = Array.from({ length: 30 }, (_, index) => (index + 1) * 10)
 const labelDuration = (minutes: number) =>
@@ -126,14 +127,14 @@ export function CourseWorkspace({
                           <Pencil aria-hidden="true" /> Edit
                         </button>
                         {course.type === 'live' ? (
-                          <a
+                          <Link
                             className="ad-row-action"
-                            href={`/courses/${course.id}/live`}
+                            href={courseStudioHref(course.id)}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
                             Studio <ArrowRight aria-hidden="true" />
-                          </a>
+                          </Link>
                         ) : null}
                       </div>
                     </td>
