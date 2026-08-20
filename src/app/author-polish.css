@@ -1511,3 +1511,135 @@
     border-left: 0;
   }
 }
+
+/* Phone layout guards. Keep author controls within the same 14–16px content
+   gutter used by the learner experience, without changing tablet/desktop. */
+@media (max-width: 640px) {
+  .ad-live-schedule-session,
+  .ad-live-schedule-copy,
+  .ad-course-editor-heading,
+  .ad-course-editor-section-head,
+  .ad-module-resources-head,
+  .ad-module-resource-head,
+  .ad-attachment-copy,
+  .as-question-heading,
+  .as-answer-heading {
+    min-width: 0;
+  }
+
+  .ad-live-schedule-copy strong,
+  .ad-live-schedule-copy small,
+  .ad-module-resources-head small,
+  .ad-module-resource-head small,
+  .ad-course-editor-section-head p,
+  .ad-attachment-copy strong,
+  .ad-attachment-copy small {
+    overflow-wrap: anywhere;
+  }
+
+  .ad-email-reminder,
+  .ad-attachment-choice,
+  .ad-form-actions,
+  .ad-course-actions,
+  .ad-module-resources-head,
+  .ad-module-resource-head,
+  .as-question-heading,
+  .as-answer-heading {
+    flex-wrap: wrap;
+  }
+
+  .ad-email-reminder {
+    min-height: 38px;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .ad-attachment-choice,
+  .ad-form-actions,
+  .ad-course-actions {
+    gap: 8px;
+  }
+
+  .ad-attachment-choice button,
+  .ad-form-actions .sb-button,
+  .ad-course-actions .sb-button {
+    flex: 1 1 132px;
+    min-width: 0;
+  }
+
+  .ad-attachment-item {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .ad-attachment-item .ad-file-preview-trigger {
+    flex-basis: 100%;
+  }
+
+  .ad-custom-file-picker {
+    max-width: 100%;
+  }
+
+  .ad-custom-file-picker small {
+    max-width: min(240px, calc(100vw - 150px));
+  }
+
+  .ad-email-chip {
+    max-width: 100%;
+  }
+
+  .ad-email-chip-value {
+    min-width: 0;
+  }
+
+  .ad-email-chip-value span,
+  .ad-email-chip-input {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ad-module-resources-empty {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .ad-module-resources-empty-action {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .ad-course-editor-header {
+    flex-wrap: wrap;
+  }
+
+  .ad-course-editor-header .sb-button {
+    margin-left: 50px;
+  }
+
+  .as-answer-heading > span {
+    margin-left: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ad-course-option-picker,
+  .ad-custom-choice,
+  .ad-choice-group,
+  .ad-course-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ad-course-editor-header .sb-button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .ad-file-preview-trigger {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ad-file-preview-trigger > * {
+    min-width: 0;
+  }
+}
