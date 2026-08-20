@@ -1054,26 +1054,165 @@
 .ad-enrolled-button {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 0;
-  border: 0;
-  background: transparent;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid #dce5f3;
+  border-radius: 999px;
+  background: #f8faff;
   color: var(--sb-primary-strong);
   font: 650 12px/1 inherit;
   cursor: pointer;
 }
-.ad-enrolled-button svg {
-  width: 14px;
+
+.ad-enrolled-button:hover {
+  border-color: #b8cae7;
+  background: #edf4ff;
+}
+
+.ad-course-enrollment strong {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 4px;
+  border-radius: 999px;
+  background: #dceaff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 .ad-course-actions {
   display: inline-flex;
-  gap: 12px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  border: 1px solid #e2e8f2;
+  border-radius: 10px;
+  background: #fbfcfe;
 }
-.ad-course-actions button {
+.ad-course-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
   border: 0;
-  padding: 0;
+  border-radius: 7px;
   background: transparent;
+  color: #3f5f9b;
+  font: 650 11.5px/1 inherit;
   cursor: pointer;
+}
+
+.ad-course-action:hover {
+  background: #eaf1ff;
+  color: var(--sb-primary-strong);
+}
+
+.ad-course-action svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ad-course-action--studio {
+  color: #4d5791;
+}
+
+.ad-dialog-eyebrow {
+  margin: 0 0 4px;
+  color: var(--sb-primary-strong);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.ad-course-materials-dialog,
+.ad-attachment-access-dialog {
+  width: min(92vw, 500px) !important;
+  border: 1px solid #e4e9f1;
+  border-radius: 18px;
+}
+
+.ad-course-material-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ad-course-material {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid #dce7fb;
+  border-radius: 12px;
+  background: #f8faff;
+  color: var(--sb-foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ad-course-material:hover {
+  border-color: #b9ccec;
+  background: #f1f6ff;
+}
+
+.ad-course-material > span,
+.ad-attachment-access-file > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #eaf1ff;
+  color: var(--sb-primary-strong);
+}
+
+.ad-course-material svg,
+.ad-attachment-access-file svg {
+  width: 17px;
+  height: 17px;
+}
+
+.ad-course-material > strong {
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-course-material > svg {
+  width: 14px;
+  color: var(--sb-primary-strong);
+}
+
+.ad-attachment-access-file {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid #dce7fb;
+  border-radius: 12px;
+  background: #f7faff;
+}
+
+.ad-attachment-access-file strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-dialog-question {
+  margin: 0;
+  color: var(--sb-muted);
+  font-size: 13px;
+  line-height: 1.55;
 }
 .ad-course-dialog {
   width: min(94vw, 840px) !important;
@@ -1509,6 +1648,76 @@
     padding-left: 0;
     border-top: 1px solid var(--sb-border);
     border-left: 0;
+  }
+}
+
+/* Live-class controls should remain usable instead of forcing the page wider. */
+@media (max-width: 640px) {
+  .sb-app-shell[data-kind='author'] .ad-overview-split,
+  .sb-app-shell[data-kind='author'] .ad-overview-section,
+  .sb-app-shell[data-kind='author'] .ad-overview-section .sb-list,
+  .sb-app-shell[data-kind='author'] .sb-field,
+  .sb-app-shell[data-kind='author'] .sb-custom-dropdown,
+  .sb-app-shell[data-kind='author'] .sb-custom-dropdown-trigger {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .sb-app-shell[data-kind='author'] .sb-custom-dropdown-trigger {
+    min-height: 40px;
+    padding: 6px 9px 6px 10px;
+  }
+
+  .sb-app-shell[data-kind='author'] .sb-custom-dropdown-text strong {
+    font-size: 12px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .sb-app-shell[data-kind='author'] .sb-custom-dropdown-text small {
+    font-size: 10px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .sb-app-shell[data-kind='author'] .sb-custom-dropdown-menu {
+    max-width: 100%;
+    max-height: min(300px, 48dvh);
+  }
+
+  .sb-app-shell[data-kind='author'] input[type='datetime-local'],
+  .sb-app-shell[data-kind='author'] input[type='date'],
+  .sb-app-shell[data-kind='author'] input[type='time'] {
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .ad-live-schedule-list,
+  .ad-live-schedule-list[data-scrollable] {
+    max-height: min(420px, 56dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ad-live-schedule-copy strong,
+  .ad-live-schedule-copy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .ad-live-schedule-session > em {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .ad-course-actions {
+    width: max-content;
+  }
+
+  .ad-course-action {
+    min-height: 32px;
   }
 }
 

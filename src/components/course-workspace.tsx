@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { useRef, useState } from 'react'
-import type { Course, CourseParticipant } from '@danvic/api-client'
+import type { Attachment, Course, CourseAggregate, CourseParticipant } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, CustomDropdown, Field, Input } from '@danvic/ui'
-import { ArrowRight, CreditCard, Layers3, Pencil, Radio, Unlock, Users, X } from 'lucide-react'
+import { ArrowRight, CreditCard, Download, ExternalLink, FileText, Layers3, Pencil, Radio, Unlock, X } from 'lucide-react'
 import styles from './course-workspace.module.css'
 import { courseStudioHref } from '@/lib/course-route'
 
@@ -24,6 +24,7 @@ export function CourseWorkspace({
 }) {
   const enrolledRef = useRef<HTMLDialogElement>(null)
   const editRef = useRef<HTMLDialogElement>(null)
+  const materialsRef = useRef<HTMLDialogElement>(null)
   const [current, setCurrent] = useState<Course | null>(null)
   const [courseList, setCourseList] = useState(courses)
   const [editType, setEditType] = useState<Course['type']>('premade')
@@ -32,6 +33,9 @@ export function CourseWorkspace({
   const [editAccessType, setEditAccessType] = useState<Course['accessType']>('free')
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
+  const [materials, setMaterials] = useState<Attachment[]>([])
+  const [materialsLoading, setMaterialsLoading] = useState(false)
+  const [materialsError, setMaterialsError] = useState('')
   const openEdit = (course: Course) => {
     setCurrent(course)
     setEditType(course.type)
@@ -42,6 +46,21 @@ export function CourseWorkspace({
     editRef.current?.showModal()
   }
   const enrolled = participants.filter((item) => item.enrollment.courseId === current?.id)
+  const openMaterials = async (course: Course) => {
+    setCurrent(course)
+    setMaterials([])
+    setMaterialsError('')
+    setMaterialsLoading(true)
+    try {
+      const aggregate = await apiFetch<CourseAggregate>(`/api/courses/${encodeURIComponent(course.id)}`)
+      setMaterials(aggregate.attachments)
+      materialsRef.current?.showModal()
+    } catch (cause) {
+      setMaterialsError(cause instanceof Error ? cause.message : 'Course materials could not be loaded')
+    } finally {
+      setMaterialsLoading(false)
+    }
+  }
   return (
     <div className="ad-directory-page">
       <header className="sb-page-header">
@@ -107,33 +126,42 @@ export function CourseWorkspace({
                     </td>
                     <td>
                       <button
-                        className="ad-enrolled-button"
+                        className="ad-enrolled-button ad-course-enrollment"
                         type="button"
                         onClick={() => {
                           setCurrent(course)
                           enrolledRef.current?.showModal()
                         }}
                       >
-                        <Users aria-hidden="true" /> {count} enrolled
+                        <strong>{count}</strong>
+                        <span>{count === 1 ? 'learner enrolled' : 'learners enrolled'}</span>
                       </button>
                     </td>
                     <td>
                       <div className="ad-course-actions">
                         <button
                           type="button"
-                          className="ad-row-action"
+                          className="ad-course-action"
                           onClick={() => openEdit(course)}
                         >
-                          <Pencil aria-hidden="true" /> Edit
+                          <Pencil aria-hidden="true" /> <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ad-course-action"
+                          onClick={() => void openMaterials(course)}
+                          disabled={materialsLoading}
+                        >
+                          <FileText aria-hidden="true" /> <span>Materials</span>
                         </button>
                         {course.type === 'live' ? (
                           <Link
-                            className="ad-row-action"
+                            className="ad-course-action ad-course-action--studio"
                             href={courseStudioHref(course.id)}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            Studio <ArrowRight aria-hidden="true" />
+                            <span>Open studio</span> <ArrowRight aria-hidden="true" />
                           </Link>
                         ) : null}
                       </div>
@@ -144,6 +172,7 @@ export function CourseWorkspace({
             </tbody>
           </table>
         </div>
+        {materialsError ? <p className="sb-form-message" data-tone="error">{materialsError}</p> : null}
       </section>
       <dialog
         ref={enrolledRef}
@@ -225,6 +254,32 @@ export function CourseWorkspace({
           <Button type="button" variant="ghost" onClick={() => enrolledRef.current?.close()}>
             Close
           </Button>
+        </div>
+      </dialog>
+      <dialog ref={materialsRef} className="ad-dialog ad-course-materials-dialog" aria-labelledby="course-materials-title">
+        <div className="ad-dialog-head">
+          <div>
+            <p className="ad-dialog-eyebrow">Course library</p>
+            <h2 id="course-materials-title">{current?.name} materials</h2>
+          </div>
+          <Button type="button" size="sm" variant="ghost" onClick={() => materialsRef.current?.close()}>
+            Cancel
+          </Button>
+        </div>
+        <div className="ad-dialog-body">
+          {materials.length ? (
+            <div className="ad-course-material-list">
+              {materials.map((attachment) => (
+                <AuthorAttachmentAccess
+                  key={attachment.id}
+                  courseId={attachment.courseId}
+                  attachment={attachment}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="ad-empty-line">This course has no materials yet.</p>
+          )}
         </div>
       </dialog>
       <dialog
@@ -418,5 +473,68 @@ export function CourseWorkspace({
         ) : null}
       </dialog>
     </div>
+  )
+}
+
+function AuthorAttachmentAccess({ courseId, attachment }: { courseId: string; attachment: Attachment }) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [viewUrl, setViewUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const attachmentPath = `/api/courses/${encodeURIComponent(courseId)}/attachments/${encodeURIComponent(attachment.id)}`
+  const close = () => dialogRef.current?.close()
+  const open = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const signed = await apiFetch<{ viewUrl: string }>(`${attachmentPath}/view`)
+      setViewUrl(signed.viewUrl)
+      dialogRef.current?.showModal()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'This material could not be opened')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const download = async () => {
+    close()
+    try {
+      const signed = await apiFetch<{ downloadUrl: string }>(`${attachmentPath}/download`)
+      const link = document.createElement('a')
+      link.href = signed.downloadUrl
+      link.click()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'This material could not be downloaded')
+    }
+  }
+  return (
+    <>
+      <button type="button" className="ad-course-material" onClick={() => void open()} disabled={busy}>
+        <span><FileText aria-hidden="true" /></span>
+        <strong>{attachment.fileName}</strong>
+        <ExternalLink aria-hidden="true" />
+      </button>
+      {error ? <p className="sb-form-message" data-tone="error">{error}</p> : null}
+      <dialog ref={dialogRef} className="ad-dialog ad-attachment-access-dialog" aria-labelledby={`attachment-${attachment.id}`}>
+        <div className="ad-dialog-head">
+          <div>
+            <p className="ad-dialog-eyebrow">Course material</p>
+            <h2 id={`attachment-${attachment.id}`}>Choose how to open this file</h2>
+          </div>
+          <Button type="button" size="sm" variant="ghost" onClick={close}>Cancel</Button>
+        </div>
+        <div className="ad-dialog-body">
+          <div className="ad-attachment-access-file">
+            <span><FileText aria-hidden="true" /></span>
+            <strong>{attachment.fileName}</strong>
+          </div>
+          <p className="ad-dialog-question">Open a secure view in a new tab, or download a copy to your device.</p>
+        </div>
+        <div className="ad-dialog-footer">
+          <Button type="button" variant="secondary" onClick={() => void download()}><Download aria-hidden="true" /> Download</Button>
+          <Button type="button" onClick={() => { close(); window.open(viewUrl, '_blank', 'noopener,noreferrer') }}><ExternalLink aria-hidden="true" /> View in new tab</Button>
+        </div>
+      </dialog>
+    </>
   )
 }

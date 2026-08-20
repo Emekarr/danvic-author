@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Course, SignedUpload } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Button, CustomDropdown, Field, FormMessage, Input, Textarea } from '@danvic/ui'
-import { CheckSquare2, Link2, Plus, Trash2, UploadCloud } from 'lucide-react'
+import { CheckSquare2, Plus, Trash2, UploadCloud } from 'lucide-react'
 
 type OptionDraft = { id: string; label: string; correct: boolean }
 type QuestionDraft = {
@@ -13,7 +13,6 @@ type QuestionDraft = {
   type: 'multiple_choice' | 'free_text'
   options: OptionDraft[]
   mediaType: '' | 'image' | 'video' | 'audio'
-  mediaUrl: string
   mediaFile: File | null
   points: number
 }
@@ -26,7 +25,6 @@ const newQuestion = (index: number): QuestionDraft => ({
     { id: `q${index}-b`, label: '', correct: false },
   ],
   mediaType: '',
-  mediaUrl: '',
   mediaFile: null,
   points: 1,
 })
@@ -34,7 +32,7 @@ const newQuestion = (index: number): QuestionDraft => ({
 export function AssessmentBuilder({
   courses,
   initialCourseId = '',
-  initialAttempts = 2,
+  initialAttempts = 1,
 }: {
   courses: Course[]
   initialCourseId?: string
@@ -43,13 +41,18 @@ export function AssessmentBuilder({
   const router = useRouter()
   const [questions, setQuestions] = useState<QuestionDraft[]>([newQuestion(1)])
   const [manualReview, setManualReview] = useState(false)
-  const [retrySupported, setRetrySupported] = useState(false)
   const [courseId, setCourseId] = useState(initialCourseId)
   const [linkToCourse, setLinkToCourse] = useState(Boolean(initialCourseId))
   const [maxAttempts, setMaxAttempts] = useState(initialAttempts)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const attachmentCount = questions.filter((question) => question.mediaType).length
+  const attachmentCount = questions.filter((question) => question.mediaFile).length
+  const retriesEnabled = maxAttempts > 1
+  const allMcqsHaveOneCorrectAnswer = questions.every(
+    (question) =>
+      question.type !== 'multiple_choice' ||
+      question.options.filter((option) => option.correct).length === 1,
+  )
 
   const updateQuestion = (index: number, update: Partial<QuestionDraft>) =>
     setQuestions((items) =>
@@ -67,6 +70,8 @@ export function AssessmentBuilder({
           setError('')
           const data = new FormData(event.currentTarget)
           try {
+            if (!allMcqsHaveOneCorrectAnswer)
+              throw new Error('Select exactly one correct answer for every multiple-choice question')
             const preparedQuestions = []
             for (const question of questions) {
               preparedQuestions.push({
@@ -83,7 +88,7 @@ export function AssessmentBuilder({
                 mediaType: question.mediaType || null,
                 mediaUrl: question.mediaFile
                   ? await uploadAssessmentMedia(question.mediaFile)
-                  : question.mediaUrl || null,
+                  : null,
                 points: question.points,
               })
             }
@@ -97,8 +102,8 @@ export function AssessmentBuilder({
                 opensAt: new Date(String(data.get('opensAt'))).toISOString(),
                 closesAt: new Date(String(data.get('closesAt'))).toISOString(),
                 manualReview,
-                retrySupported,
-                maxAttempts: retrySupported ? maxAttempts : 1,
+                retrySupported: retriesEnabled,
+                maxAttempts,
                 passingScorePercent: Number(data.get('passingScorePercent')),
                 questions: preparedQuestions,
               }),
@@ -189,22 +194,20 @@ export function AssessmentBuilder({
                 required
               />
             </Field>
-            {retrySupported ? (
-              <Field label="Maximum attempts" required hint="Includes the learner's first attempt.">
-                <div className="ad-number-picker">
-                  {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
-                    <button
-                      type="button"
-                      data-selected={maxAttempts === count || undefined}
-                      onClick={() => setMaxAttempts(count)}
-                      key={count}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-            ) : null}
+            <Field
+              label="Assessment attempts"
+              required
+              hint="1 means no retries. Any higher number enables retries."
+            >
+              <CustomDropdown<string>
+                value={String(maxAttempts)}
+                onChange={(attempts) => setMaxAttempts(Number(attempts))}
+                options={Array.from({ length: 10 }, (_, index) => index + 1).map((count) => ({
+                  value: String(count),
+                  label: count === 1 ? '1 attempt (no retries)' : `${count} attempts`,
+                }))}
+              />
+            </Field>
           </div>
           <div className="ad-assessment-instructions">
             <Field label="Instructions" required>
@@ -222,17 +225,6 @@ export function AssessmentBuilder({
               <small>
                 Leave off to mark MCQs automatically. Written answers always require review.
               </small>
-            </span>
-          </label>
-          <label className="as-check-row">
-            <input
-              type="checkbox"
-              checked={retrySupported}
-              onChange={(event) => setRetrySupported(event.target.checked)}
-            />
-            <span>
-              <strong>Allow assessment retries</strong>
-              <small>Failed, graded attempts can be retried up to the configured maximum.</small>
             </span>
           </label>
         </section>
@@ -322,84 +314,25 @@ export function AssessmentBuilder({
                         required
                       />
                     </Field>
-                    <Field label="Diagram/media">
-                      <CustomDropdown<QuestionDraft['mediaType']>
-                        value={question.mediaType}
-                        onChange={(mediaType) =>
+                    <Field label="Diagram/media" hint="Optional: JPEG, PNG, MP4, or MP3 up to 100 MiB.">
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,video/mp4,audio/mpeg"
+                        disabled={attachmentCount >= 10 && !question.mediaFile}
+                        onChange={(event) => {
+                          const mediaFile = event.target.files?.[0] ?? null
                           updateQuestion(index, {
-                            mediaType,
-                            ...(mediaType ? {} : { mediaUrl: '', mediaFile: null }),
+                            mediaFile,
+                            mediaType: mediaFile ? mediaTypeForFile(mediaFile) : '',
                           })
-                        }
-                        options={[
-                          { value: '', label: 'No media' },
-                          {
-                            value: 'image',
-                            label: 'Image diagram',
-                            disabled: attachmentCount >= 10 && !question.mediaType,
-                          },
-                          {
-                            value: 'video',
-                            label: 'Video',
-                            disabled: attachmentCount >= 10 && !question.mediaType,
-                          },
-                          {
-                            value: 'audio',
-                            label: 'Audio',
-                            disabled: attachmentCount >= 10 && !question.mediaType,
-                          },
-                        ]}
+                        }}
                       />
                     </Field>
-                    {question.mediaType ? (
-                      <>
-                        <Field
-                          label="Upload media file"
-                          hint="JPEG, PNG, MP4, or MP3 up to 100 MiB."
-                        >
-                          <Input
-                            type="file"
-                            accept={mediaAccept(question.mediaType)}
-                            onChange={(event) =>
-                              updateQuestion(index, {
-                                mediaFile: event.target.files?.[0] ?? null,
-                                mediaUrl: event.target.files?.[0] ? '' : question.mediaUrl,
-                              })
-                            }
-                          />
-                        </Field>
-                        <Field
-                          label={`Or link an ${question.mediaType === 'image' ? 'image' : question.mediaType}`}
-                          hint="A file upload takes precedence over this URL."
-                        >
-                          <Input
-                            type="url"
-                            value={question.mediaUrl}
-                            disabled={Boolean(question.mediaFile)}
-                            placeholder="https://…"
-                            onChange={(event) =>
-                              updateQuestion(index, { mediaUrl: event.target.value })
-                            }
-                          />
-                        </Field>
-                      </>
-                    ) : null}
                   </div>
-                  {question.mediaType ? (
+                  {question.mediaFile ? (
                     <div className="as-media-note">
-                      {question.mediaFile ? (
-                        <>
-                          <UploadCloud aria-hidden="true" />
-                          {question.mediaFile.name} will be uploaded with this assessment.
-                        </>
-                      ) : question.mediaUrl ? (
-                        <>
-                          <Link2 aria-hidden="true" />
-                          This linked media appears above the question for learners.
-                        </>
-                      ) : (
-                        'Choose a file or paste a secure media link.'
-                      )}
+                      <UploadCloud aria-hidden="true" />
+                      {question.mediaFile.name} will be uploaded with this assessment.
                     </div>
                   ) : null}
                   {question.type === 'multiple_choice' ? (
@@ -407,25 +340,28 @@ export function AssessmentBuilder({
                       <div className="as-answer-heading">
                         <div>
                           <strong>Answers</strong>
-                          <small>Enter each choice, then mark every correct answer.</small>
+                          <small>Select exactly one correct answer.</small>
                         </div>
                         <span>
-                          {question.options.filter((option) => option.correct).length} marked
+                          {question.options.filter((option) => option.correct).length === 1
+                            ? '1 selected'
+                            : 'Select 1'}
                         </span>
                       </div>
                       {question.options.map((option, optionIndex) => (
                         <div className="as-answer-row" key={option.id}>
                           <label className="as-answer-correct">
                             <input
-                              type="checkbox"
+                              type="radio"
+                              name={`correct-answer-${index}`}
                               checked={option.correct}
                               aria-label={`Mark option ${optionIndex + 1} correct`}
-                              onChange={(event) =>
+                              onChange={() =>
                                 updateQuestion(index, {
                                   options: question.options.map((item, itemIndex) =>
                                     itemIndex === optionIndex
-                                      ? { ...item, correct: event.target.checked }
-                                      : item,
+                                      ? { ...item, correct: true }
+                                      : { ...item, correct: false },
                                   ),
                                 })
                               }
@@ -504,7 +440,7 @@ export function AssessmentBuilder({
             <Button type="button" variant="ghost" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button busy={busy}>
+            <Button busy={busy} disabled={!allMcqsHaveOneCorrectAnswer}>
               <CheckSquare2 aria-hidden="true" /> Create assessment
             </Button>
           </div>
@@ -531,9 +467,9 @@ async function uploadAssessmentMedia(file: File): Promise<string> {
   return signed.attachmentPath
 }
 
-const mediaAccept = (type: QuestionDraft['mediaType']) => {
-  if (type === 'image') return 'image/jpeg,image/png'
-  if (type === 'video') return 'video/mp4'
-  if (type === 'audio') return 'audio/mpeg'
-  return undefined
+const mediaTypeForFile = (file: File): QuestionDraft['mediaType'] => {
+  if (file.type === 'image/jpeg' || file.type === 'image/png') return 'image'
+  if (file.type === 'video/mp4') return 'video'
+  if (file.type === 'audio/mpeg') return 'audio'
+  return ''
 }

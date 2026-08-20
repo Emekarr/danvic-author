@@ -94,7 +94,7 @@ export function Overview({
       <LiveCourseSchedule courses={upcomingLive} startsIn={startsIn} />
 
       <div className="ad-overview-split">
-        <section className="ad-overview-section">
+        <section className="ad-section ad-section--plain ad-overview-section">
           <div className="ad-section-heading">
             <div>
               <h2>Recent courses</h2>
@@ -129,7 +129,7 @@ export function Overview({
           )}
         </section>
 
-        <section className="ad-overview-section">
+        <section className="ad-section ad-section--plain ad-overview-section">
           <div className="ad-section-heading">
             <div>
               <h2>Quick actions</h2>
