@@ -1,7 +1,7 @@
 'use client'
 
 import { notFound, useSearchParams } from 'next/navigation'
-import type { CourseAggregate, LiveSession } from '@danvic/api-client'
+import type { Course, LiveSession } from '@danvic/api-client'
 import { LiveClassroomLoader } from '@/components/live-classroom-loader'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { useResource } from '@/lib/data'
@@ -36,17 +36,15 @@ export function CourseRouteView() {
 }
 
 export function CourseLiveView({ courseId }: { courseId: string }) {
-  const aggregate = useResource<CourseAggregate>(
-    `/api/courses/${encodeURIComponent(courseId)}`,
-  )
+  const courses = useResource<{ courses: Course[] }>('/api/courses')
   const sessions = useResource<{ sessions: LiveSession[] }>('/api/live/live-sessions')
   const query = useSearchParams()
 
-  if (aggregate.loading || sessions.loading) return <LoadingPage />
-  if (aggregate.error || sessions.error)
-    return <ErrorPage message={aggregate.error || sessions.error} />
+  if (courses.loading || sessions.loading) return <LoadingPage />
+  if (courses.error || sessions.error)
+    return <ErrorPage message={courses.error || sessions.error} />
 
-  const course = aggregate.data?.course
+  const course = courses.data?.courses.find((item) => item.id === courseId)
   if (!course) return <ErrorPage message="This course was not found in your author workspace." />
   if (course.type !== 'live')
     return <ErrorPage message="Only live courses can be opened in the course studio." />
