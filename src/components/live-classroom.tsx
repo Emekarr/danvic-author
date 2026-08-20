@@ -24,12 +24,15 @@ import {
   CameraOff,
   CircleStop,
   Hand,
+  Maximize2,
   MessageCircle,
   Mic,
   MicOff,
+  Minimize2,
   MonitorUp,
   Radio,
   ScreenShareOff,
+  PenLine,
   UserRoundX,
   Users,
   Video,
@@ -183,6 +186,11 @@ function Classroom({
   onExpired: () => void
 }) {
   const rtc = useRtc(join, setError)
+  const session = (state?.session ?? join.session) as LiveState['session'] & {
+    whiteboardActive?: boolean
+    whiteboardUsedAt?: string | null
+  }
+  const whiteboardActive = Boolean(session.whiteboardActive && join.whiteboard)
   const refresh = useCallback(async () => {
     try {
       const value = await api<LiveState>(`/api/live/live-sessions/${join.session.id}/state`)
@@ -200,6 +208,23 @@ function Classroom({
     const timer = window.setInterval(() => void refresh(), 2000)
     return () => window.clearInterval(timer)
   }, [refresh])
+  useEffect(() => {
+    const leave = () => {
+      void api(`/api/live/live-sessions/${join.session.id}/leave`, {
+        method: 'POST',
+        keepalive: true,
+      }).catch(() => undefined)
+    }
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload()
+    }
+    window.addEventListener('pagehide', leave)
+    window.addEventListener('pageshow', restore)
+    return () => {
+      window.removeEventListener('pagehide', leave)
+      window.removeEventListener('pageshow', restore)
+    }
+  }, [join.session.id])
   const moderate = async (action: string, participantId?: string) => {
     await api(`/api/live/live-sessions/${join.session.id}/moderate`, {
       method: 'POST',
@@ -217,6 +242,21 @@ function Classroom({
       })
     } catch (value) {
       setError(value instanceof Error ? value.message : 'Could not update the broadcast.')
+    }
+  }
+  const toggleWhiteboard = async () => {
+    try {
+      const result = await api<{ session: LiveState['session'] }>(
+        `/api/live/live-sessions/${join.session.id}/whiteboard`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ active: !whiteboardActive }),
+        },
+      )
+      if (state) setState({ ...state, session: result.session })
+      await refresh()
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Could not update the whiteboard.')
     }
   }
   const record = async (type: 'web' | 'audio') => {
@@ -249,6 +289,11 @@ function Classroom({
             ? `Ends in ${remainingLabel(join.session.expiresAt)}`
             : 'Time limit active'}
         </span>
+        {session.whiteboardUsedAt && (
+          <span className={`lc-mode-status${whiteboardActive ? ' is-active' : ''}`}>
+            {whiteboardActive ? 'Whiteboard active' : 'Whiteboard used'}
+          </span>
+        )}
         <div className="lc-actions">
           <button
             className="sb-button sb-button--secondary sb-button--sm"
@@ -289,20 +334,21 @@ function Classroom({
       </header>
       {error && <p className="lc-error">{error}</p>}
       <div className="lc-layout">
-        <section className="lc-stage">
-          <div className="lc-video-grid">
-            <LocalVideo
-              track={rtc.cameraTrack}
-              cameraOn={rtc.cameraOn}
-              screenSharing={rtc.screenSharing}
-              label="You (course author)"
-            />
-            {rtc.remoteVideos.map((remote) => (
-              <RemoteVideo key={remote.uid} remote={remote} />
-            ))}
-          </div>
-          {join.whiteboard && (
+        <section className={`lc-stage${whiteboardActive ? ' lc-stage--whiteboard' : ''}`}>
+          {whiteboardActive && join.whiteboard ? (
             <Whiteboard config={join.whiteboard} uid={`author-${join.participant.actorId}`} />
+          ) : (
+            <div className="lc-video-grid">
+              <LocalVideo
+                track={rtc.cameraTrack}
+                cameraOn={rtc.cameraOn}
+                screenSharing={rtc.screenSharing}
+                label="You (course author)"
+              />
+              {rtc.remoteVideos.map((remote) => (
+                <RemoteVideo key={remote.uid} remote={remote} />
+              ))}
+            </div>
           )}
         </section>
         <aside className="lc-sidebar">
@@ -322,6 +368,10 @@ function Classroom({
         <button disabled={!rtc.joined} onClick={() => toggle('screenSharing')}>
           {rtc.screenSharing ? <ScreenShareOff /> : <MonitorUp />}
           <span>{rtc.screenSharing ? 'Stop share' : 'Share screen'}</span>
+        </button>
+        <button disabled={!rtc.joined || !join.whiteboard} onClick={toggleWhiteboard}>
+          <PenLine />
+          <span>{whiteboardActive ? 'Show cameras' : 'Open whiteboard'}</span>
         </button>
       </footer>
     </main>
@@ -359,18 +409,31 @@ function useRtc(join: LiveJoinConfig, onError: (value: string) => void) {
       const rtcClient = AgoraRTC.createClient({ mode: 'live', codec: 'vp8', role: 'host' })
       client = rtcClient
       clientRef.current = rtcClient
-      rtcClient.on('user-published', async (user, mediaType) => {
-        await rtcClient.subscribe(user, mediaType)
-        if (mediaType === 'audio') user.audioTrack?.play()
-        if (mediaType === 'video' && user.videoTrack)
-          setRemoteVideos((values) => [
-            ...values.filter((item) => item.uid !== user.uid),
-            { uid: user.uid, track: user.videoTrack! },
-          ])
+      setRemoteVideos([])
+      rtcClient.on('user-published', (user, mediaType) => {
+        void rtcClient
+          .subscribe(user, mediaType)
+          .then(() => {
+            if (mediaType === 'audio') user.audioTrack?.play()
+            if (mediaType === 'video' && user.videoTrack)
+              setRemoteVideos((values) => [
+                ...values.filter((item) => item.uid !== user.uid),
+                { uid: user.uid, track: user.videoTrack! },
+              ])
+          })
+          .catch((value: unknown) =>
+            onError(value instanceof Error ? value.message : 'Could not receive a live stream'),
+          )
       })
       rtcClient.on('user-unpublished', (user, mediaType) => {
         if (mediaType === 'video')
           setRemoteVideos((values) => values.filter((item) => item.uid !== user.uid))
+      })
+      rtcClient.on('user-left', (user) => {
+        setRemoteVideos((values) => values.filter((item) => item.uid !== user.uid))
+      })
+      rtcClient.on('connection-state-change', (current) => {
+        setJoined(current === 'CONNECTED' || current === 'RECONNECTING')
       })
       await rtcClient.join(join.appId, join.channelName, join.rtcToken, join.uid)
       if (disposed) await rtcClient.leave()
@@ -466,7 +529,20 @@ function useRtc(join: LiveJoinConfig, onError: (value: string) => void) {
     }
   }
   const leave = async () => {
-    await clientRef.current?.leave()
+    const client = clientRef.current
+    clientRef.current = null
+    setJoined(false)
+    setRemoteVideos([])
+    for (const ref of [audioRef, cameraRef, screenRef]) {
+      ref.current?.stop()
+      ref.current?.close()
+      ref.current = null
+    }
+    setMicrophoneOn(false)
+    setCameraOn(false)
+    setScreenSharing(false)
+    setCameraTrack(null)
+    await client?.leave()
   }
   return { microphoneOn, cameraOn, screenSharing, cameraTrack, remoteVideos, joined, set, leave }
 }
@@ -487,31 +563,57 @@ function LocalVideo({
   screenSharing: boolean
   label: string
 }) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (track && cameraOn && !screenSharing && ref.current) track.play(ref.current)
     return () => track?.stop()
   }, [track, cameraOn, screenSharing])
   return (
-    <div className="lc-video">
+    <div className="lc-video" ref={containerRef}>
       <div ref={ref} className="lc-video-canvas">
         {(!cameraOn || screenSharing) && <CameraOff />}
       </div>
       <span>{label}</span>
+      <FullscreenButton targetRef={containerRef} />
     </div>
   )
 }
 function RemoteVideo({ remote }: { remote: { uid: string | number; track: IRemoteVideoTrack } }) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (ref.current) remote.track.play(ref.current)
     return () => remote.track.stop()
   }, [remote])
   return (
-    <div className="lc-video">
+    <div className="lc-video" ref={containerRef}>
       <div ref={ref} className="lc-video-canvas" />
       <span>Participant {remote.uid}</span>
+      <FullscreenButton targetRef={containerRef} />
     </div>
+  )
+}
+function FullscreenButton({ targetRef }: { targetRef: { current: HTMLDivElement | null } }) {
+  const [active, setActive] = useState(false)
+  useEffect(() => {
+    const update = () => setActive(document.fullscreenElement === targetRef.current)
+    document.addEventListener('fullscreenchange', update)
+    return () => document.removeEventListener('fullscreenchange', update)
+  }, [targetRef])
+  return (
+    <button
+      type="button"
+      className="lc-video-fullscreen"
+      title={active ? 'Exit full screen' : 'View camera full screen'}
+      aria-label={active ? 'Exit full screen' : 'View camera full screen'}
+      onClick={() => {
+        if (active) void document.exitFullscreen()
+        else void targetRef.current?.requestFullscreen()
+      }}
+    >
+      {active ? <Minimize2 /> : <Maximize2 />}
+    </button>
   )
 }
 function Whiteboard({ config, uid }: { config: WhiteboardJoinConfig; uid: string }) {

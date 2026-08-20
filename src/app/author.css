@@ -1350,3 +1350,68 @@
     padding-inline: 16px;
   }
 }
+
+/* Live classroom presentation modes. */
+.lc-mode-status {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #475569;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.lc-mode-status.is-active {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.lc-stage--whiteboard .lc-whiteboard {
+  min-width: 0;
+}
+
+.lc-stage--whiteboard .lc-whiteboard-canvas {
+  height: max(520px, calc(100vh - 190px));
+}
+
+.lc-video-fullscreen {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 9px;
+  color: #fff;
+  background: rgba(2, 6, 23, 0.72);
+  cursor: pointer;
+}
+
+.lc-video .lc-video-fullscreen svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+.lc-video:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 900px) {
+  .lc-top {
+    flex-wrap: wrap;
+  }
+
+  .lc-stage--whiteboard .lc-whiteboard-canvas {
+    height: max(460px, calc(100vh - 230px));
+  }
+}

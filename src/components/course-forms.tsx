@@ -42,7 +42,7 @@ async function upload(file: File): Promise<string> {
   })
   const response = await fetch(signed.uploadUrl, {
     method: 'PUT',
-    headers: signed.requiredHeaders,
+    headers: { 'Content-Type': file.type },
     body: file,
   })
   if (!response.ok) throw new Error(`${file.name} could not be uploaded to course storage`)

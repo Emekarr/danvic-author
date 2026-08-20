@@ -8,3 +8,8 @@ This is a static, browser-rendered author workspace. It talks directly to the DA
 4. Deploy `out/` only.
 
 For Cloudflare Pages, select **Next.js (Static HTML Export)**, use `npx next build`, set `out` as the output directory, and define `NEXT_PUBLIC_BACKEND_API_URL` and `NEXT_PUBLIC_DANVIC_APP=author` as build variables. Do not use `@cloudflare/next-on-pages`.
+
+Course files follow Cloudflare's documented browser upload flow: the app requests a short-lived
+presigned `PutObject` URL from the backend, then sends the raw file directly to that R2 S3 API URL
+with `PUT` and a matching `Content-Type` header. The R2 bucket CORS rule must allow this app's exact
+origin, `PUT`, and `Content-Type`. Do not add R2 credentials to this frontend.
