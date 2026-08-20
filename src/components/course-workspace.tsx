@@ -8,6 +8,12 @@ import { Badge, Button, CustomDropdown, Field, Input } from '@danvic/ui'
 import { ArrowRight, CreditCard, Layers3, Pencil, Radio, Unlock, Users, X } from 'lucide-react'
 import styles from './course-workspace.module.css'
 
+const LIVE_CLASS_DURATIONS = Array.from({ length: 30 }, (_, index) => (index + 1) * 10)
+const labelDuration = (minutes: number) =>
+  minutes < 60
+    ? `${minutes} minutes`
+    : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`
+
 export function CourseWorkspace({
   courses,
   participants,
@@ -341,23 +347,14 @@ export function CourseWorkspace({
                   </Field>
                   {editType === 'live' ? (
                     <Field label="Live class length" required>
-                      <select
-                        className="sb-input"
-                        value={editLiveCallDurationMinutes}
-                        onChange={(event) =>
-                          setEditLiveCallDurationMinutes(Number(event.target.value))
-                        }
-                      >
-                        {Array.from({ length: 30 }, (_, index) => (index + 1) * 10).map(
-                          (minutes) => (
-                            <option key={minutes} value={minutes}>
-                              {minutes < 60
-                                ? `${minutes} minutes`
-                                : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`}
-                            </option>
-                          ),
-                        )}
-                      </select>
+                      <CustomDropdown<string>
+                        value={String(editLiveCallDurationMinutes)}
+                        onChange={(minutes) => setEditLiveCallDurationMinutes(Number(minutes))}
+                        options={LIVE_CLASS_DURATIONS.map((minutes) => ({
+                          value: String(minutes),
+                          label: labelDuration(minutes),
+                        }))}
+                      />
                     </Field>
                   ) : null}
                   <Field label="Learner access">

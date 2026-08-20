@@ -28,6 +28,12 @@ type ModuleDraft = { title: string; content: string; resources: ModuleResource[]
 const COURSE_FILE_ACCEPT =
   '.pdf,.jpg,.jpeg,.png,.svg,.gif,.webp,.mp4,.mov,.webm,.mp3,.wav,.m4a,.ogg,.txt,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip'
 
+const LIVE_CLASS_DURATIONS = Array.from({ length: 30 }, (_, index) => (index + 1) * 10)
+const labelDuration = (minutes: number) =>
+  minutes < 60
+    ? `${minutes} minutes`
+    : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`
+
 async function upload(file: File): Promise<string> {
   if (!file.type) throw new Error(`${file.name} does not have a supported content type`)
   const signed = await apiFetch<SignedUpload>('/api/uploads/sign', {
@@ -74,6 +80,10 @@ export function CourseCreateForm() {
       <form
         onSubmit={async (event) => {
           event.preventDefault()
+          if (type === 'premade' && modules.length === 0) {
+            setError('Add at least one module before creating a premade course')
+            return
+          }
           setBusy(true)
           setError('')
           const createAssessment =
@@ -186,19 +196,14 @@ export function CourseCreateForm() {
                 required
                 hint="The call ends automatically at this limit."
               >
-                <select
-                  className="sb-input"
-                  value={liveCallDurationMinutes}
-                  onChange={(event) => setLiveCallDurationMinutes(Number(event.target.value))}
-                >
-                  {Array.from({ length: 30 }, (_, index) => (index + 1) * 10).map((minutes) => (
-                    <option key={minutes} value={minutes}>
-                      {minutes < 60
-                        ? `${minutes} minutes`
-                        : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`}
-                    </option>
-                  ))}
-                </select>
+                <CustomDropdown<string>
+                  value={String(liveCallDurationMinutes)}
+                  onChange={(minutes) => setLiveCallDurationMinutes(Number(minutes))}
+                  options={LIVE_CLASS_DURATIONS.map((minutes) => ({
+                    value: String(minutes),
+                    label: labelDuration(minutes),
+                  }))}
+                />
               </Field>
             ) : null}
             <Field label="Learner access" required>
@@ -277,7 +282,11 @@ export function CourseCreateForm() {
           <div className="ad-section-heading">
             <div>
               <h2>Modules</h2>
-              <p>Optional plain-text learning sections, displayed in this order.</p>
+              <p>
+                {type === 'live'
+                  ? 'Optional learning sections, displayed in this order.'
+                  : 'Add at least one learning module before creating a premade course.'}
+              </p>
             </div>
             <Button
               type="button"
@@ -295,19 +304,17 @@ export function CourseCreateForm() {
               <div className="ad-form-panel sb-module" key={index}>
                 <div className="ad-section-heading" style={{ minHeight: 0, marginBottom: 16 }}>
                   <p className="sb-module-index">Module {index + 1}</p>
-                  {modules.length > 1 ? (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Remove module ${index + 1}`}
-                      onClick={() =>
-                        setModules((items) => items.filter((_, itemIndex) => itemIndex !== index))
-                      }
-                    >
-                      <Trash2 aria-hidden="true" />
-                    </Button>
-                  ) : null}
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Remove module ${index + 1}`}
+                    onClick={() =>
+                      setModules((items) => items.filter((_, itemIndex) => itemIndex !== index))
+                    }
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
                 </div>
                 <div className="sb-list">
                   <Field label="Title" required>
@@ -474,7 +481,11 @@ export function CourseCreateForm() {
               </div>
             ))}
             {!modules.length ? (
-              <p className="ad-empty-line">No modules yet. You can publish this course without them.</p>
+              <p className="ad-empty-line">
+                {type === 'live'
+                  ? 'No modules yet. Live classes can be created without modules.'
+                  : 'Add a module to enable course creation.'}
+              </p>
             ) : null}
           </div>
         </section>
@@ -559,10 +570,16 @@ export function CourseCreateForm() {
         <section className="ad-section">
           <FormMessage>{error}</FormMessage>
           <div className="sb-form-footer" style={{ justifyContent: 'flex-end' }}>
-            <Button busy={busy} type="submit">
+            <Button busy={busy} type="submit" disabled={type === 'premade' && !modules.length}>
               <UploadCloud aria-hidden="true" /> Proceed without assessment
             </Button>
-            <Button type="submit" variant="secondary" busy={busy} data-next="assessment">
+            <Button
+              type="submit"
+              variant="secondary"
+              busy={busy}
+              data-next="assessment"
+              disabled={type === 'premade' && !modules.length}
+            >
               Create assessment
             </Button>
           </div>
