@@ -1443,3 +1443,71 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+@media (max-width: 640px) {
+  .ad-live-schedule-head,
+  .ad-live-schedule-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .ad-live-schedule-session {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .ad-live-schedule-session > em {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .ad-email-reminder {
+    align-self: flex-start;
+    max-width: 100%;
+  }
+
+  .ad-course-editor-header {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .ad-course-editor-body,
+  .ad-course-editor-section {
+    padding: 16px;
+  }
+
+  .ad-course-editor-footer {
+    flex-wrap: wrap;
+    padding: 14px 16px 16px;
+  }
+
+  .ad-course-editor-footer .sb-button {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+
+  .ad-course-dialog,
+  .ad-course-editor-dialog {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px);
+  }
+
+  .ad-form-actions,
+  .ad-course-actions {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .ad-resource-type-picker,
+  .ad-submission-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .ad-submission-facts span + span {
+    padding-left: 0;
+    border-top: 1px solid var(--sb-border);
+    border-left: 0;
+  }
+}
