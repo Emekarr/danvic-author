@@ -1,6 +1,39 @@
 {
-  "name": "@danvic/author", "version": "0.1.0", "private": true,
-  "scripts": { "dev": "next dev --hostname 127.0.0.1 --port 3006", "build": "next build --webpack", "typecheck": "tsc --noEmit", "lint": "eslint . --max-warnings=0" },
-  "dependencies": { "@danvic/api-client": "file:vendor/danvic-api-client-0.1.0.tgz", "@danvic/ui": "file:vendor/danvic-ui-0.1.0.tgz", "@netless/fastboard-react": "^1.1.8", "agora-rtc-sdk-ng": "^4.24.7", "lucide-react": "1.29.0", "next": "16.3.0", "react": "19.2.8", "react-dom": "19.2.8", "white-web-sdk": "^2.16.56", "zod": "4.4.3" },
-  "devDependencies": { "@types/node": "26.1.2", "@types/react": "19.2.14", "@types/react-dom": "19.2.3", "eslint": "9.39.1", "eslint-config-next": "16.3.0", "typescript": "5.9.3" }
+  "name": "@danvic/author",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3006",
+    "build": "next build --webpack",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "@danvic/api-client": "file:vendor/danvic-api-client-0.1.0.tgz",
+    "@danvic/ui": "file:vendor/danvic-ui-0.1.0.tgz",
+    "@netless/fastboard-react": "^1.1.8",
+    "@tiptap/extension-image": "3.30.2",
+    "@tiptap/extension-placeholder": "3.30.2",
+    "@tiptap/extension-table": "3.30.2",
+    "@tiptap/extension-text-align": "3.30.2",
+    "@tiptap/extension-underline": "3.30.2",
+    "@tiptap/pm": "3.30.2",
+    "@tiptap/react": "3.30.2",
+    "@tiptap/starter-kit": "3.30.2",
+    "agora-rtc-sdk-ng": "^4.24.7",
+    "lucide-react": "1.29.0",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "white-web-sdk": "^2.16.56",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.2",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.3.0",
+    "typescript": "5.9.3"
+  }
 }

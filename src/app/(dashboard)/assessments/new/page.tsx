@@ -22,6 +22,7 @@ function NewAssessmentView() {
   const query = useSearchParams()
   const { courses, loading, error } = useWorkspace()
   const attempts = Math.min(10, Math.max(1, Number(query.get('attempts')) || 2))
+  const createWithPendingCourse = query.get('courseDraft') === '1'
 
   if (loading) return <p className="ad-empty-line">Loading assessment builder…</p>
   if (error) return <p className="ad-empty-line" data-tone="error">{error}</p>
@@ -30,13 +31,18 @@ function NewAssessmentView() {
     <>
       <PageHeader
         eyebrow="Course builder"
-        title="Create an assessment"
-        description="Build the final learning step with course-style details, availability, questions, and review settings."
+        title={createWithPendingCourse ? 'Add the course assessment' : 'Create an assessment'}
+        description={
+          createWithPendingCourse
+            ? 'Finish the assessment, then create the course and its final assessment together.'
+            : 'Build the final learning step with course-style details, availability, questions, and review settings.'
+        }
       />
       <AssessmentBuilder
         courses={courses}
         initialCourseId={query.get('course') ?? ''}
         initialAttempts={attempts}
+        createWithPendingCourse={createWithPendingCourse}
       />
     </>
   )

@@ -1,11 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Course, SignedUpload } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Button, CustomDropdown, Field, FormMessage, Input, Textarea } from '@danvic/ui'
-import { CheckSquare2, Plus, Trash2, UploadCloud } from 'lucide-react'
+import { CheckSquare2, CircleAlert, Plus, Trash2, UploadCloud } from 'lucide-react'
+import {
+  attachmentIsTooLarge,
+  clearPendingCourseDraft,
+  createCourseFromDraft,
+  loadPendingCourseDraft,
+  savePendingCourseDraft,
+  type PendingCourseDraft,
+} from '@/lib/pending-course-draft'
 
 type OptionDraft = { id: string; label: string; correct: boolean }
 type QuestionDraft = {
@@ -33,10 +41,12 @@ export function AssessmentBuilder({
   courses,
   initialCourseId = '',
   initialAttempts = 1,
+  createWithPendingCourse = false,
 }: {
   courses: Course[]
   initialCourseId?: string
   initialAttempts?: number
+  createWithPendingCourse?: boolean
 }) {
   const router = useRouter()
   const [questions, setQuestions] = useState<QuestionDraft[]>([newQuestion(1)])
@@ -46,6 +56,8 @@ export function AssessmentBuilder({
   const [maxAttempts, setMaxAttempts] = useState(initialAttempts)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [pendingCourse, setPendingCourse] = useState<PendingCourseDraft | null>(null)
+  const [pendingCourseLoading, setPendingCourseLoading] = useState(createWithPendingCourse)
   const attachmentCount = questions.filter((question) => question.mediaFile).length
   const retriesEnabled = maxAttempts > 1
   const allMcqsHaveOneCorrectAnswer = questions.every(
@@ -54,12 +66,36 @@ export function AssessmentBuilder({
       question.options.filter((option) => option.correct).length === 1,
   )
 
+  useEffect(() => {
+    if (!createWithPendingCourse) return
+    let active = true
+    void loadPendingCourseDraft()
+      .then((draft) => {
+        if (!active) return
+        setPendingCourse(draft)
+        if (!draft) setError('The pending course draft could not be found. Return to course creation and try again.')
+      })
+      .catch((cause) => {
+        if (active) setError(cause instanceof Error ? cause.message : 'Could not load the course draft')
+      })
+      .finally(() => {
+        if (active) setPendingCourseLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [createWithPendingCourse])
+
   const updateQuestion = (index: number, update: Partial<QuestionDraft>) =>
     setQuestions((items) =>
       items.map((question, questionIndex) =>
         questionIndex === index ? { ...question, ...update } : question,
       ),
     )
+
+  if (pendingCourseLoading) {
+    return <p className="ad-empty-line">Loading the pending course draft…</p>
+  }
 
   return (
     <div className="ad-form-page">
@@ -92,12 +128,27 @@ export function AssessmentBuilder({
                 points: question.points,
               })
             }
+            let assessmentCourseId = linkToCourse && courseId ? courseId : null
+            if (createWithPendingCourse) {
+              if (!pendingCourse) {
+                throw new Error('The pending course draft is unavailable. Return to course creation and try again.')
+              }
+              if (pendingCourse.createdCourseId) {
+                assessmentCourseId = pendingCourse.createdCourseId
+              } else {
+                const courseResult = await createCourseFromDraft(pendingCourse)
+                assessmentCourseId = courseResult.course.id
+                const savedDraft = { ...pendingCourse, createdCourseId: assessmentCourseId }
+                setPendingCourse(savedDraft)
+                await savePendingCourseDraft(savedDraft)
+              }
+            }
             const result = await apiFetch<{ id: string }>('/api/assessments', {
               method: 'POST',
               body: JSON.stringify({
                 title: data.get('title'),
                 description: data.get('description'),
-                courseId: linkToCourse && courseId ? courseId : null,
+                courseId: assessmentCourseId,
                 durationMinutes: Number(data.get('durationMinutes')),
                 opensAt: new Date(String(data.get('opensAt'))).toISOString(),
                 closesAt: new Date(String(data.get('closesAt'))).toISOString(),
@@ -108,6 +159,7 @@ export function AssessmentBuilder({
                 questions: preparedQuestions,
               }),
             })
+            if (createWithPendingCourse) await clearPendingCourseDraft()
             router.push(`/assessments/${result.id}/submissions`)
             router.refresh()
           } catch (cause) {
@@ -122,7 +174,9 @@ export function AssessmentBuilder({
             <div>
               <h2>Assessment details</h2>
               <p>
-                Link it to a course as the final step, or leave it standalone for direct access.
+                {createWithPendingCourse
+                  ? 'Complete the assessment below. The course and assessment will be created together when you submit.'
+                  : 'Link it to a course as the final step, or leave it standalone for direct access.'}
               </p>
             </div>
           </div>
@@ -131,38 +185,50 @@ export function AssessmentBuilder({
               <Input name="title" maxLength={200} required />
             </Field>
             <div className="as-linked-course ad-span-2">
-              <div className="as-linked-course-row">
-                <label className="as-check-row">
-                  <input
-                    type="checkbox"
-                    checked={linkToCourse}
-                    onChange={(event) => {
-                      setLinkToCourse(event.target.checked)
-                      if (!event.target.checked) setCourseId('')
-                    }}
-                  />
+              {createWithPendingCourse && pendingCourse ? (
+                <div className="ad-pending-course-summary">
+                  <CheckSquare2 aria-hidden="true" />
                   <span>
-                    <strong>Linked course (optional)</strong>
+                    <strong>Assessment for {pendingCourse.name}</strong>
                     <small>
-                      Require learners to complete a course before this assessment unlocks.
+                      {pendingCourse.modules.length} module{pendingCourse.modules.length === 1 ? '' : 's'} · the course has not been created yet
                     </small>
                   </span>
-                </label>
-                {linkToCourse ? (
-                  <Field label="Course" required>
-                    <CustomDropdown<string>
-                      value={courseId}
-                      onChange={setCourseId}
-                      placeholder="Choose a course"
-                      options={courses.map((course) => ({
-                        value: course.id,
-                        label: course.name,
-                        description: 'Unlock assessment after completion',
-                      }))}
+                </div>
+              ) : (
+                <div className="as-linked-course-row">
+                  <label className="as-check-row">
+                    <input
+                      type="checkbox"
+                      checked={linkToCourse}
+                      onChange={(event) => {
+                        setLinkToCourse(event.target.checked)
+                        if (!event.target.checked) setCourseId('')
+                      }}
                     />
-                  </Field>
-                ) : null}
-              </div>
+                    <span>
+                      <strong>Linked course (optional)</strong>
+                      <small>
+                        Require learners to complete a course before this assessment unlocks.
+                      </small>
+                    </span>
+                  </label>
+                  {linkToCourse ? (
+                    <Field label="Course" required>
+                      <CustomDropdown<string>
+                        value={courseId}
+                        onChange={setCourseId}
+                        placeholder="Choose a course"
+                        options={courses.map((course) => ({
+                          value: course.id,
+                          label: course.name,
+                          description: 'Unlock assessment after completion',
+                        }))}
+                      />
+                    </Field>
+                  ) : null}
+                </div>
+              )}
             </div>
             <Field label="Time allowed (minutes)" required>
               <Input
@@ -330,9 +396,15 @@ export function AssessmentBuilder({
                     </Field>
                   </div>
                   {question.mediaFile ? (
-                    <div className="as-media-note">
-                      <UploadCloud aria-hidden="true" />
-                      {question.mediaFile.name} will be uploaded with this assessment.
+                    <div className={`as-media-note${attachmentIsTooLarge(question.mediaFile) ? ' is-invalid' : ''}`}>
+                      {attachmentIsTooLarge(question.mediaFile) ? (
+                        <CircleAlert aria-hidden="true" />
+                      ) : (
+                        <UploadCloud aria-hidden="true" />
+                      )}
+                      {attachmentIsTooLarge(question.mediaFile)
+                        ? `${question.mediaFile.name} is over 100 MiB — upload will fail.`
+                        : `${question.mediaFile.name} will be uploaded with this assessment.`}
                     </div>
                   ) : null}
                   {question.type === 'multiple_choice' ? (
@@ -440,8 +512,12 @@ export function AssessmentBuilder({
             <Button type="button" variant="ghost" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button busy={busy} disabled={!allMcqsHaveOneCorrectAnswer}>
-              <CheckSquare2 aria-hidden="true" /> Create assessment
+            <Button
+              busy={busy}
+              disabled={!allMcqsHaveOneCorrectAnswer || (createWithPendingCourse && !pendingCourse)}
+            >
+              <CheckSquare2 aria-hidden="true" />
+              {createWithPendingCourse ? 'Create course and assessment' : 'Create assessment'}
             </Button>
           </div>
         </section>
@@ -451,6 +527,7 @@ export function AssessmentBuilder({
 }
 
 async function uploadAssessmentMedia(file: File): Promise<string> {
+  if (attachmentIsTooLarge(file)) throw new Error(`${file.name} is over 100 MiB and cannot be uploaded`)
   const supported = ['image/jpeg', 'image/png', 'video/mp4', 'audio/mpeg']
   if (!supported.includes(file.type))
     throw new Error(`${file.name} must be a JPEG, PNG, MP4, or MP3 file`)

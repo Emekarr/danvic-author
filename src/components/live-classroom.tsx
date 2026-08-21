@@ -226,9 +226,11 @@ function Classroom({
   }
   const whiteboardActive = Boolean(session.whiteboardActive && join.whiteboard)
   const activeParticipants = (state?.participants ?? []).filter((participant) => !participant.leftAt)
-  const otherParticipantCount = activeParticipants.filter((participant) => participant.id !== join.participant.id).length
-  const hasOtherParticipants = otherParticipantCount > 0 || rtc.remoteVideos.length > 0
-  const visibleParticipantCount = Math.max(activeParticipants.length, rtc.remoteVideos.length + 1)
+  const activeStudentCount = activeParticipants.filter((participant) => participant.actorType === 'student').length
+  const studentsOnline = Math.max(activeStudentCount, rtc.remoteVideos.length)
+  const hasOtherParticipants = studentsOnline > 0
+  const studentsOnlineLabel = studentsOnline === 1 ? '1 student online' : `${studentsOnline} students online`
+  const studentsOnlineStatement = studentsOnline === 1 ? '1 student is online' : `${studentsOnline} students are online`
   const refresh = useCallback(async () => {
     try {
       const value = await api<LiveState>(`/api/live/live-sessions/${join.session.id}/state`)
@@ -358,6 +360,7 @@ function Classroom({
           </span>
         </div>
         <div className="lc-session-meta">
+          <span className="lc-attendance-pill">{studentsOnlineLabel}</span>
           <span className="lc-time-remaining">
             {join.session.expiresAt
               ? `Ends in ${remainingLabel(join.session.expiresAt)}`
@@ -380,14 +383,14 @@ function Classroom({
               {!hasOtherParticipants && (
                 <div className="lc-alone-state">
                   <Users />
-                  <strong>You’re the only one here</strong>
+                  <strong>No one else is here</strong>
                   <span>Students will appear here automatically when they join the class.</span>
                 </div>
               )}
               {hasOtherParticipants && !rtc.remoteVideos.length && (
                 <div className="lc-alone-state lc-presence-state">
                   <Users />
-                  <strong>{visibleParticipantCount} people are in class</strong>
+                  <strong>{studentsOnlineStatement}</strong>
                   <span>No one is sharing a camera or screen right now. Class audio continues automatically.</span>
                 </div>
               )}
@@ -773,7 +776,6 @@ function ParticipantPanel({
   return (
     <section className="lc-panel lc-participant-panel">
       <div className="lc-panel-heading">
-        <h3><Users /> People</h3>
         <span>{active.length} in class</span>
       </div>
       <div className="lc-participants">
@@ -861,17 +863,16 @@ function ParticipantActionMenu({
   const options: Array<{
     action: ModerationAction
     name: string
-    description: string
     icon: typeof MicOff
     danger?: boolean
   }> = [
-    { action: 'mute', name: 'Mute microphone', description: 'Stops their current audio stream.', icon: MicOff },
-    { action: 'camera-off', name: 'Turn camera off', description: 'Stops their camera and screen share.', icon: CameraOff },
+    { action: 'mute', name: 'Mute microphone', icon: MicOff },
+    { action: 'camera-off', name: 'Turn camera off', icon: CameraOff },
     participant.canPublish
-      ? { action: 'block-publish', name: 'Move to audience', description: 'Removes permission to publish audio or video.', icon: ShieldCheck }
-      : { action: 'allow-publish', name: 'Invite to stage', description: 'Lets them turn on their microphone or camera.', icon: Hand },
-    { action: 'kick', name: 'Remove from class', description: 'Ends this attendance session.', icon: UserRoundX, danger: true },
-    { action: 'ban', name: 'Ban for 24 hours', description: 'Removes them and blocks re-entry for one day.', icon: BanIcon, danger: true },
+      ? { action: 'block-publish', name: 'Move to audience', icon: ShieldCheck }
+      : { action: 'allow-publish', name: 'Invite to stage', icon: Hand },
+    { action: 'kick', name: 'Remove from class', icon: UserRoundX, danger: true },
+    { action: 'ban', name: 'Ban for 24 hours', icon: BanIcon, danger: true },
   ]
   const run = async (option: (typeof options)[number]) => {
     setWorking(option.action)
@@ -906,10 +907,6 @@ function ParticipantActionMenu({
           aria-label={`Actions for ${participant.displayName}`}
           style={menuPosition}
         >
-          <div className="lc-person-menu-title">
-            <strong>Manage attendee</strong>
-            <span>Choose one action for {participant.displayName}.</span>
-          </div>
           {menuError && <p className="lc-person-menu-error" role="alert">{menuError}</p>}
           {options.map((option) => {
             const Icon = option.icon
@@ -923,7 +920,7 @@ function ParticipantActionMenu({
                 onClick={() => void run(option)}
               >
                 <span className="lc-person-menu-icon"><Icon /></span>
-                <span><strong>{working === option.action ? 'Applying…' : option.name}</strong><small>{option.description}</small></span>
+                <strong>{working === option.action ? 'Applying…' : option.name}</strong>
               </button>
             )
           })}

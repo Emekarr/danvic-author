@@ -140,6 +140,20 @@
   background: rgba(62, 180, 114, 0.17);
 }
 
+.lc-attendance-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  color: #d8ebe3;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: rgba(47, 111, 85, 0.28);
+  border: 1px solid rgba(129, 205, 174, 0.16);
+  border-radius: 999px;
+}
+
 .lc-error {
   position: absolute;
   z-index: 45;
@@ -557,6 +571,11 @@
   font-size: 12px;
 }
 
+.lc-participant-panel .lc-panel-heading {
+  justify-content: flex-end;
+  min-height: 42px;
+}
+
 .lc-participants,
 .lc-messages {
   min-height: 0;
@@ -681,6 +700,22 @@
   border-radius: 16px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
   animation: lc-menu-reveal 170ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  padding: 7px;
+}
+
+.lc-person-menu-popover > button {
+  min-height: 46px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 9px;
+}
+
+.lc-person-menu-popover > button > strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lc-person-menu-title,
@@ -1287,6 +1322,13 @@
 
   .lc-session-meta > :not(.lc-time-remaining) {
     display: none;
+  }
+
+  .lc-session-meta > .lc-attendance-pill {
+    display: inline-flex;
+    min-height: 34px;
+    padding-inline: 8px;
+    font-size: 9px;
   }
 
   .lc-time-remaining {

@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import type { Attachment, Course, CourseAggregate, CourseParticipant } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, CustomDropdown, Field, Input } from '@danvic/ui'
-import { ArrowRight, CreditCard, Download, ExternalLink, FileText, Layers3, MoreHorizontal, Pencil, Radio, Unlock, X } from 'lucide-react'
+import { CreditCard, Download, ExternalLink, FileText, Layers3, MoreHorizontal, Pencil, Radio, Unlock, X } from 'lucide-react'
 import styles from './course-workspace.module.css'
 import { courseStudioHref } from '@/lib/course-route'
 
@@ -162,7 +162,7 @@ export function CourseWorkspace({
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <span>Open studio</span> <ArrowRight aria-hidden="true" />
+                            <span>Join live class now</span>
                           </Link>
                         ) : null}
                       </div>
@@ -174,7 +174,7 @@ export function CourseWorkspace({
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            Live class
+                            Join live class now
                           </Link>
                         ) : null}
                         <div className="ad-course-more">

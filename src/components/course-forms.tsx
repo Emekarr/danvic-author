@@ -3,10 +3,12 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import NextImage from 'next/image'
-import { apiFetch, type CourseAggregate, type SignedUpload } from '@danvic/api-client'
-import { Button, CustomDropdown, Field, FormMessage, Input, Textarea } from '@danvic/ui'
+import { apiFetch, type SignedUpload } from '@danvic/api-client'
+import { Button, CustomDropdown, Field, FormMessage, Input } from '@danvic/ui'
 import {
+  ArrowRight,
   CreditCard,
+  CircleAlert,
   FileUp,
   Layers3,
   Paperclip,
@@ -17,13 +19,22 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react'
+import {
+  attachmentIsTooLarge,
+  createCourseFromDraft,
+  savePendingCourseDraft,
+  type PendingCourseDraft,
+  validatePendingCourseDraft,
+} from '@/lib/pending-course-draft'
+import { moduleContentIsEmpty } from '@/lib/module-content'
+import { ModuleEditor } from '@/components/module-editor'
 
 type ModuleResource = {
   id: string
   label: string
   file: File | null
 }
-type ModuleDraft = { title: string; content: string; resources: ModuleResource[] }
+type ModuleDraft = { id: string; title: string; content: string; resources: ModuleResource[] }
 
 const COURSE_FILE_ACCEPT =
   '.pdf,.jpg,.jpeg,.png,.svg,.gif,.webp,.mp4,.mov,.webm,.mp3,.wav,.m4a,.ogg,.txt,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip'
@@ -64,6 +75,7 @@ export function CourseCreateForm() {
   const previewRef = useRef<HTMLDialogElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [invalidModuleIndexes, setInvalidModuleIndexes] = useState<number[]>([])
   const addResource = (moduleIndex: number) =>
     setModules((items) =>
       items.map((item, itemIndex) =>
@@ -84,61 +96,52 @@ export function CourseCreateForm() {
             setError('Add at least one module before creating a premade course')
             return
           }
+          const emptyModuleIndexes = modules.flatMap((module, index) =>
+            moduleContentIsEmpty(module.content) ? [index] : [],
+          )
+          if (emptyModuleIndexes.length) {
+            setInvalidModuleIndexes(emptyModuleIndexes)
+            setError(
+              `Write some content for module ${emptyModuleIndexes[0]! + 1} before creating the course.`,
+            )
+            return
+          }
+          setInvalidModuleIndexes([])
           setBusy(true)
           setError('')
-          const createAssessment =
+          const proceedToAssessment =
             (event.nativeEvent as SubmitEvent).submitter?.getAttribute('data-next') === 'assessment'
           const data = new FormData(event.currentTarget)
           try {
-            const moduleAttachments = modules.flatMap((module, moduleIndex) =>
-              module.resources.flatMap((resource) =>
-                resource.file
-                  ? [
-                      {
-                        file: resource.file,
-                        fileName: resource.label.trim() || null,
-                        moduleIndex,
-                      },
-                    ]
-                  : [],
-              ),
-            )
-            if (files.length + moduleAttachments.length > 10)
-              throw new Error('A course can have at most 10 attachments')
-            const attachments = []
-            for (const file of files) {
-              attachments.push({ attachmentPath: await upload(file), fileName: file.name })
+            const draft: PendingCourseDraft = {
+              name: String(data.get('name') ?? ''),
+              durationMinutes: Number(data.get('durationMinutes')),
+              type,
+              liveCallDurationMinutes: type === 'live' ? liveCallDurationMinutes : null,
+              certificateOnCompletion,
+              accessType,
+              priceNaira: accessType === 'paid' ? Number(data.get('priceNaira')) : 0,
+              scheduledAt:
+                scheduleDate && scheduleTime
+                  ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
+                  : null,
+              modules: modules.map(({ title, content, resources }) => ({
+                title,
+                content,
+                resources: resources.flatMap((resource) =>
+                  resource.file ? [{ label: resource.label, file: resource.file }] : [],
+                ),
+              })),
+              files,
             }
-            for (const attachment of moduleAttachments) {
-              attachments.push({
-                attachmentPath: await upload(attachment.file),
-                fileName: attachment.fileName,
-                moduleIndex: attachment.moduleIndex,
-              })
+            validatePendingCourseDraft(draft)
+            if (proceedToAssessment) {
+              await savePendingCourseDraft(draft)
+              router.push('/assessments/new?courseDraft=1')
+              return
             }
-            const result = await apiFetch<CourseAggregate>('/api/courses', {
-              method: 'POST',
-              body: JSON.stringify({
-                name: data.get('name'),
-                durationMinutes: Number(data.get('durationMinutes')),
-                type,
-                liveCallDurationMinutes: type === 'live' ? liveCallDurationMinutes : null,
-                certificateOnCompletion,
-                accessType,
-                priceNaira: accessType === 'paid' ? Number(data.get('priceNaira')) : 0,
-                scheduledAt:
-                  scheduleDate && scheduleTime
-                    ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
-                    : null,
-                modules: modules.map(({ title, content }) => ({ title, content })),
-                attachments,
-              }),
-            })
-            router.push(
-              createAssessment
-                ? `/assessments/new?course=${encodeURIComponent(result.course.id)}`
-                : `/courses?created=${result.course.id}`,
-            )
+            const result = await createCourseFromDraft(draft)
+            router.push(`/courses?created=${result.course.id}`)
             router.refresh()
           } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Course could not be created')
@@ -293,7 +296,10 @@ export function CourseCreateForm() {
               size="sm"
               variant="soft"
               onClick={() =>
-                setModules((items) => [...items, { title: '', content: '', resources: [] }])
+                setModules((items) => [
+                  ...items,
+                  { id: crypto.randomUUID(), title: '', content: '', resources: [] },
+                ])
               }
             >
               <Plus aria-hidden="true" /> Add module
@@ -301,7 +307,7 @@ export function CourseCreateForm() {
           </div>
           <div className="sb-list">
             {modules.map((module, index) => (
-              <div className="ad-form-panel sb-module" key={index}>
+              <div className="ad-form-panel sb-module" key={module.id}>
                 <div className="ad-section-heading" style={{ minHeight: 0, marginBottom: 16 }}>
                   <p className="sb-module-index">Module {index + 1}</p>
                   <Button
@@ -331,20 +337,19 @@ export function CourseCreateForm() {
                       required
                     />
                   </Field>
-                  <Field label="Content" required>
-                    <Textarea
-                      value={module.content}
-                      maxLength={100000}
-                      onChange={(event) =>
-                        setModules((items) =>
-                          items.map((item, itemIndex) =>
-                            itemIndex === index ? { ...item, content: event.target.value } : item,
-                          ),
-                        )
-                      }
-                      required
-                    />
-                  </Field>
+                  <ModuleEditor
+                    documentId={module.id}
+                    value={module.content}
+                    invalid={invalidModuleIndexes.includes(index)}
+                    onChange={(content) => {
+                      setInvalidModuleIndexes((items) => items.filter((item) => item !== index))
+                      setModules((items) =>
+                        items.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, content } : item,
+                        ),
+                      )
+                    }}
+                  />
                   <div className="ad-module-resources">
                     <div className="ad-module-resources-head">
                       <div>
@@ -416,7 +421,7 @@ export function CourseCreateForm() {
                           <div className="sb-field">
                             <span className="sb-label">File</span>
                             <label
-                              className="ad-custom-file-picker"
+                              className={`ad-custom-file-picker${resource.file && attachmentIsTooLarge(resource.file) ? ' is-invalid' : ''}`}
                               htmlFor={`module-file-${resource.id}`}
                             >
                               <input
@@ -445,10 +450,18 @@ export function CourseCreateForm() {
                                 }
                               />
                               <UploadCloud aria-hidden="true" />
-                              <span>
-                                {resource.file ? 'Choose a different file' : 'Choose file'}
+                              <span className="ad-custom-file-picker-copy">
+                                <strong>
+                                  {resource.file ? 'Choose a different file' : 'Choose file'}
+                                </strong>
+                                {resource.file ? <small>{resource.file.name}</small> : null}
                               </span>
-                              {resource.file ? <small>{resource.file.name}</small> : null}
+                              {resource.file && attachmentIsTooLarge(resource.file) ? (
+                                <span className="ad-file-size-warning">
+                                  <CircleAlert aria-hidden="true" />
+                                  Over 100 MiB — upload will fail
+                                </span>
+                              ) : null}
                             </label>
                           </div>
                           <Field label="Display name (optional)">
@@ -528,7 +541,10 @@ export function CourseCreateForm() {
           {files.length ? (
             <div className="ad-attachment-list">
               {files.map((file, fileIndex) => (
-                <div className="ad-attachment-item" key={`${file.name}-${file.size}`}>
+                <div
+                  className={`ad-attachment-item${attachmentIsTooLarge(file) ? ' is-invalid' : ''}`}
+                  key={`${file.name}-${file.size}`}
+                >
                   <button
                     className="sb-attachment ad-file-preview-trigger"
                     type="button"
@@ -547,8 +563,14 @@ export function CourseCreateForm() {
                         <small>{file.type || 'Unknown file type'}</small>
                       </span>
                     </span>
-                    <span className="sb-cell-secondary">
-                      {(file.size / 1024 / 1024).toFixed(2)} MiB
+                    <span className="ad-attachment-size">
+                      <span>{(file.size / 1024 / 1024).toFixed(2)} MiB</span>
+                      {attachmentIsTooLarge(file) ? (
+                        <span className="ad-file-size-warning">
+                          <CircleAlert aria-hidden="true" />
+                          Over 100 MiB — upload will fail
+                        </span>
+                      ) : null}
                     </span>
                   </button>
                   <Button
@@ -569,18 +591,22 @@ export function CourseCreateForm() {
         </section>
         <section className="ad-section">
           <FormMessage>{error}</FormMessage>
-          <div className="sb-form-footer" style={{ justifyContent: 'flex-end' }}>
-            <Button busy={busy} type="submit" disabled={type === 'premade' && !modules.length}>
+          <div className="sb-form-footer ad-course-create-actions">
+            <Button
+              busy={busy}
+              type="submit"
+              variant="secondary"
+              disabled={type === 'premade' && !modules.length}
+            >
               <UploadCloud aria-hidden="true" /> Proceed without assessment
             </Button>
             <Button
               type="submit"
-              variant="secondary"
               busy={busy}
               data-next="assessment"
               disabled={type === 'premade' && !modules.length}
             >
-              Create assessment
+              Proceed with assessment <ArrowRight aria-hidden="true" />
             </Button>
           </div>
         </section>
@@ -646,6 +672,9 @@ export function AddCourseContentForm({
   const [moduleBusy, setModuleBusy] = useState(false)
   const [attachmentBusy, setAttachmentBusy] = useState(false)
   const [moduleCourseId, setModuleCourseId] = useState('')
+  const [moduleContent, setModuleContent] = useState('')
+  const [moduleContentInvalid, setModuleContentInvalid] = useState(false)
+  const [moduleDocumentId, setModuleDocumentId] = useState(() => crypto.randomUUID())
   const [attachmentCourseId, setAttachmentCourseId] = useState('')
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([])
   const [message, setMessage] = useState('')
@@ -658,6 +687,11 @@ export function AddCourseContentForm({
         <form
           onSubmit={async (event) => {
             event.preventDefault()
+            if (moduleContentIsEmpty(moduleContent)) {
+              setModuleContentInvalid(true)
+              setError('Write some module content before adding the module.')
+              return
+            }
             setModuleBusy(true)
             setMessage('')
             setError('')
@@ -668,12 +702,15 @@ export function AddCourseContentForm({
                 `/api/courses/${encodeURIComponent(String(data.get('courseId')))}/modules`,
                 {
                   method: 'POST',
-                  body: JSON.stringify({ title: data.get('title'), content: data.get('content') }),
+                  body: JSON.stringify({ title: data.get('title'), content: moduleContent }),
                 },
               )
               setMessage('Module added to the course.')
               form.reset()
               setModuleCourseId('')
+              setModuleContent('')
+              setModuleContentInvalid(false)
+              setModuleDocumentId(crypto.randomUUID())
             } catch (cause) {
               setError(cause instanceof Error ? cause.message : 'Module could not be added')
             } finally {
@@ -694,9 +731,15 @@ export function AddCourseContentForm({
             <Field label="Module title" required>
               <Input name="title" maxLength={200} required />
             </Field>
-            <Field label="Module content" required>
-              <Textarea name="content" maxLength={100000} required />
-            </Field>
+            <ModuleEditor
+              documentId={moduleDocumentId}
+              value={moduleContent}
+              invalid={moduleContentInvalid}
+              onChange={(content) => {
+                setModuleContent(content)
+                setModuleContentInvalid(false)
+              }}
+            />
             <div className="ad-form-actions">
               <Button busy={moduleBusy}>Add module</Button>
             </div>
