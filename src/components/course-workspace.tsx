@@ -4,17 +4,10 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import type { Attachment, Course, CourseAggregate, CourseParticipant } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
-import { Badge, Button, CustomDropdown, Field, Input } from '@danvic/ui'
-import { CreditCard, Download, ExternalLink, FileText, Layers3, MoreHorizontal, Pencil, Radio, Unlock, X } from 'lucide-react'
-import styles from './course-workspace.module.css'
+import { Badge, Button } from '@danvic/ui'
+import { Download, ExternalLink, FileText, MoreHorizontal, Pencil, X } from 'lucide-react'
 import { CourseCreateButton } from '@/components/course-create-button'
 import { courseStudioHref } from '@/lib/course-route'
-
-const LIVE_CLASS_DURATIONS = Array.from({ length: 30 }, (_, index) => (index + 1) * 10)
-const labelDuration = (minutes: number) =>
-  minutes < 60
-    ? `${minutes} minutes`
-    : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`
 
 export function CourseWorkspace({
   courses,
@@ -24,29 +17,13 @@ export function CourseWorkspace({
   participants: CourseParticipant[]
 }) {
   const enrolledRef = useRef<HTMLDialogElement>(null)
-  const editRef = useRef<HTMLDialogElement>(null)
   const materialsRef = useRef<HTMLDialogElement>(null)
   const [current, setCurrent] = useState<Course | null>(null)
-  const [courseList, setCourseList] = useState(courses)
-  const [editType, setEditType] = useState<Course['type']>('premade')
-  const [editLiveCallDurationMinutes, setEditLiveCallDurationMinutes] = useState(60)
-  const [editCertificateOnCompletion, setEditCertificateOnCompletion] = useState(false)
-  const [editAccessType, setEditAccessType] = useState<Course['accessType']>('free')
-  const [saving, setSaving] = useState(false)
-  const [editError, setEditError] = useState('')
+  const [courseList] = useState(courses)
   const [materials, setMaterials] = useState<Attachment[]>([])
   const [materialsLoading, setMaterialsLoading] = useState(false)
   const [materialsError, setMaterialsError] = useState('')
   const [menuCourseId, setMenuCourseId] = useState<string | null>(null)
-  const openEdit = (course: Course) => {
-    setCurrent(course)
-    setEditType(course.type)
-    setEditLiveCallDurationMinutes(course.liveCallDurationMinutes ?? 60)
-    setEditCertificateOnCompletion(course.certificateOnCompletion)
-    setEditAccessType(course.accessType)
-    setEditError('')
-    editRef.current?.showModal()
-  }
   const enrolled = participants.filter((item) => item.enrollment.courseId === current?.id)
   const openMaterials = async (course: Course) => {
     setCurrent(course)
@@ -139,13 +116,12 @@ export function CourseWorkspace({
                     </td>
                     <td>
                       <div className="ad-course-actions">
-                        <button
-                          type="button"
+                        <Link
                           className="ad-course-action"
-                          onClick={() => openEdit(course)}
+                          href={`/courses/edit?id=${encodeURIComponent(course.id)}`}
                         >
                           <Pencil aria-hidden="true" /> <span>Edit</span>
-                        </button>
+                        </Link>
                         <button
                           type="button"
                           className="ad-course-action"
@@ -197,15 +173,12 @@ export function CourseWorkspace({
                               >
                                 <FileText aria-hidden="true" /> Materials
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMenuCourseId(null)
-                                  openEdit(course)
-                                }}
+                              <Link
+                                href={`/courses/edit?id=${encodeURIComponent(course.id)}`}
+                                onClick={() => setMenuCourseId(null)}
                               >
                                 <Pencil aria-hidden="true" /> Edit
-                              </button>
+                              </Link>
                             </div>
                           ) : null}
                         </div>
@@ -326,196 +299,6 @@ export function CourseWorkspace({
             <p className="ad-empty-line">This course has no materials yet.</p>
           )}
         </div>
-      </dialog>
-      <dialog
-        ref={editRef}
-        className={`ad-dialog ${styles.dialog}`}
-        aria-labelledby="course-editor-title"
-      >
-        {current ? (
-          <form
-            className={styles.editor}
-            onSubmit={async (event) => {
-              event.preventDefault()
-              setSaving(true)
-              setEditError('')
-              const form = new FormData(event.currentTarget)
-              const scheduledValue = String(form.get('scheduledAt') ?? '')
-              try {
-                const aggregate = await apiFetch<{ course: Course }>(
-                  `/api/courses/${encodeURIComponent(current.id)}`,
-                  {
-                    method: 'PATCH',
-                    body: JSON.stringify({
-                      name: form.get('name'),
-                      durationMinutes: Number(form.get('durationMinutes')),
-                      type: editType,
-                      liveCallDurationMinutes:
-                        editType === 'live' ? editLiveCallDurationMinutes : null,
-                      certificateOnCompletion: editCertificateOnCompletion,
-                      accessType: editAccessType,
-                      priceNaira: editAccessType === 'paid' ? Number(form.get('priceNaira')) : 0,
-                      scheduledAt: scheduledValue ? new Date(scheduledValue).toISOString() : null,
-                    }),
-                  },
-                )
-                setCourseList((items) =>
-                  items.map((course) =>
-                    course.id === aggregate.course.id ? aggregate.course : course,
-                  ),
-                )
-                setCurrent(aggregate.course)
-                editRef.current?.close()
-              } catch (cause) {
-                setEditError(cause instanceof Error ? cause.message : 'Course could not be updated')
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
-            <header className={styles.header}>
-              <div className={styles.heading}>
-                <span className={styles.mark} aria-hidden="true">
-                  <Pencil />
-                </span>
-                <div>
-                  <h2 id="course-editor-title">Edit course</h2>
-                  <p>{current.name}</p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                aria-label="Close course editor"
-                onClick={() => editRef.current?.close()}
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </header>
-            <div className={styles.body}>
-              <section className={styles.section} aria-labelledby="course-details-heading">
-                <div className={styles.sectionHead}>
-                  <h3 id="course-details-heading">Course details</h3>
-                </div>
-                <div className={styles.details}>
-                  <Field label="Course name" required>
-                    <Input name="name" defaultValue={current.name} required />
-                  </Field>
-                  <Field label="Duration" required>
-                    <Input
-                      className="ad-duration-input"
-                      name="durationMinutes"
-                      type="number"
-                      min={1}
-                      defaultValue={current.durationMinutes}
-                      required
-                    />
-                  </Field>
-                  <Field label="Schedule">
-                    <Input
-                      name="scheduledAt"
-                      type="datetime-local"
-                      defaultValue={current.scheduledAt?.slice(0, 16) ?? ''}
-                    />
-                  </Field>
-                </div>
-              </section>
-              <section className={styles.section} aria-labelledby="course-access-heading">
-                <div className={styles.sectionHead}>
-                  <h3 id="course-access-heading">Delivery & access</h3>
-                </div>
-                <div className={styles.preferences}>
-                  <Field label="Course format">
-                    <CustomDropdown<Course['type']>
-                      value={editType}
-                      onChange={setEditType}
-                      options={[
-                        {
-                          value: 'premade',
-                          label: 'Premade',
-                          description: 'Available on demand',
-                          icon: <Layers3 aria-hidden="true" />,
-                        },
-                        {
-                          value: 'live',
-                          label: 'Live',
-                          description: 'Host live teaching sessions',
-                          icon: <Radio aria-hidden="true" />,
-                        },
-                      ]}
-                    />
-                  </Field>
-                  {editType === 'live' ? (
-                    <Field label="Live class length" required>
-                      <CustomDropdown<string>
-                        value={String(editLiveCallDurationMinutes)}
-                        onChange={(minutes) => setEditLiveCallDurationMinutes(Number(minutes))}
-                        options={LIVE_CLASS_DURATIONS.map((minutes) => ({
-                          value: String(minutes),
-                          label: labelDuration(minutes),
-                        }))}
-                      />
-                    </Field>
-                  ) : null}
-                  <Field label="Learner access">
-                    <CustomDropdown<Course['accessType']>
-                      value={editAccessType}
-                      onChange={setEditAccessType}
-                      options={[
-                        {
-                          value: 'free',
-                          label: 'Free',
-                          description: 'No payment required',
-                          icon: <Unlock aria-hidden="true" />,
-                        },
-                        {
-                          value: 'paid',
-                          label: 'Paid',
-                          description: 'Collect payment before access',
-                          icon: <CreditCard aria-hidden="true" />,
-                        },
-                      ]}
-                    />
-                  </Field>
-                  <Field label="Price (NGN)" required={editAccessType === 'paid'}>
-                    <Input
-                      name="priceNaira"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      defaultValue={(current.priceKobo / 100).toFixed(2)}
-                      disabled={editAccessType === 'free'}
-                      required={editAccessType === 'paid'}
-                    />
-                  </Field>
-                  <label className="ad-certificate-option">
-                    <input
-                      type="checkbox"
-                      checked={editCertificateOnCompletion}
-                      onChange={(event) => setEditCertificateOnCompletion(event.target.checked)}
-                    />
-                    <span>
-                      <strong>Award a certificate on completion</strong>
-                      <small>No assessment is required for the certificate.</small>
-                    </span>
-                  </label>
-                </div>
-              </section>
-              {editError ? (
-                <p className="sb-form-message" data-tone="error">
-                  {editError}
-                </p>
-              ) : null}
-            </div>
-            <footer className={styles.footer}>
-              <Button type="button" variant="ghost" onClick={() => editRef.current?.close()}>
-                Cancel
-              </Button>
-              <Button busy={saving}>Save changes</Button>
-            </footer>
-          </form>
-        ) : null}
       </dialog>
     </div>
   )
