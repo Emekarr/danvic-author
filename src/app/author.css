@@ -1291,8 +1291,23 @@
     width: 100%;
   }
 
-  .sb-app-shell[data-kind='author'] .ad-directory-grid {
-    grid-template-columns: 1fr;
+  .sb-app-shell[data-kind='author'] .ad-overview .ad-directory-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .sb-app-shell[data-kind='author'] .ad-overview .ad-directory {
+    padding-bottom: 28px;
+  }
+
+  .sb-app-shell[data-kind='author'] .ad-overview .ad-directory-card {
+    min-height: 0;
+    padding: 4px 0;
+    border-bottom: 0;
+  }
+
+  .sb-app-shell[data-kind='author'] .ad-overview .ad-directory-card-note {
+    display: none;
   }
 
   .sb-app-shell[data-kind='author'] .ad-security-form .sb-button {
