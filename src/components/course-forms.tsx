@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import NextImage from 'next/image'
 import { apiFetch, type SignedUpload } from '@danvic/api-client'
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import {
   attachmentIsTooLarge,
-  createCourseFromDraft,
+  loadPendingCourseDraft,
   savePendingCourseDraft,
   type PendingCourseDraft,
   validatePendingCourseDraft,
@@ -70,6 +70,11 @@ export function CourseCreateForm() {
   const [certificateOnCompletion, setCertificateOnCompletion] = useState(false)
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTime, setScheduleTime] = useState('')
+  const [name, setName] = useState('')
+  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [priceNaira, setPriceNaira] = useState('')
+  const [hydrated, setHydrated] = useState(false)
+  const skipAutosaveRef = useRef(false)
   const [preview, setPreview] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const previewRef = useRef<HTMLDialogElement>(null)
@@ -87,6 +92,90 @@ export function CourseCreateForm() {
           : item,
       ),
     )
+  const buildDraft = (): PendingCourseDraft => ({
+    name,
+    durationMinutes,
+    type,
+    liveCallDurationMinutes: type === 'live' ? liveCallDurationMinutes : null,
+    certificateOnCompletion,
+    accessType,
+    priceNaira: accessType === 'paid' ? Number(priceNaira || 0) : 0,
+    scheduledAt:
+      scheduleDate && scheduleTime
+        ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
+        : null,
+    modules: modules.map(({ title, content, resources }) => ({
+      title,
+      content,
+      resources: resources.flatMap((resource) =>
+        resource.file ? [{ label: resource.label, file: resource.file }] : [],
+      ),
+    })),
+    files,
+  })
+  const draftHasContent =
+    Boolean(name.trim()) ||
+    files.length > 0 ||
+    modules.some(
+      (module) =>
+        module.title.trim() ||
+        !moduleContentIsEmpty(module.content) ||
+        module.resources.some((resource) => resource.file),
+    )
+
+  useEffect(() => {
+    let active = true
+    void loadPendingCourseDraft()
+      .then((draft) => {
+        if (!active || !draft) return
+        if (draft.createdCourseId) {
+          skipAutosaveRef.current = true
+          return
+        }
+        setName(draft.name)
+        setDurationMinutes(draft.durationMinutes)
+        setType(draft.type)
+        if (draft.liveCallDurationMinutes) setLiveCallDurationMinutes(draft.liveCallDurationMinutes)
+        setCertificateOnCompletion(draft.certificateOnCompletion)
+        setAccessType(draft.accessType)
+        if (draft.accessType === 'paid') setPriceNaira(String(draft.priceNaira))
+        if (draft.scheduledAt) {
+          const date = new Date(draft.scheduledAt)
+          const pad = (value: number) => String(value).padStart(2, '0')
+          setScheduleDate(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`)
+          setScheduleTime(`${pad(date.getHours())}:${pad(date.getMinutes())}`)
+        }
+        setModules(
+          draft.modules.map((module) => ({
+            id: crypto.randomUUID(),
+            title: module.title,
+            content: module.content,
+            resources: module.resources.map((resource) => ({
+              id: crypto.randomUUID(),
+              label: resource.label,
+              file: resource.file,
+            })),
+          })),
+        )
+        setFiles(draft.files)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setHydrated(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated || skipAutosaveRef.current) return
+    const timer = setTimeout(() => {
+      if (!draftHasContent) return
+      void savePendingCourseDraft({ ...buildDraft(), stage: 'editing' }).catch(() => {})
+    }, 500)
+    return () => clearTimeout(timer)
+  })
   return (
     <div className="ad-form-page">
       <form
@@ -109,42 +198,13 @@ export function CourseCreateForm() {
           setInvalidModuleIndexes([])
           setBusy(true)
           setError('')
-          const proceedToAssessment =
-            (event.nativeEvent as SubmitEvent).submitter?.getAttribute('data-next') === 'assessment'
-          const data = new FormData(event.currentTarget)
           try {
-            const draft: PendingCourseDraft = {
-              name: String(data.get('name') ?? ''),
-              durationMinutes: Number(data.get('durationMinutes')),
-              type,
-              liveCallDurationMinutes: type === 'live' ? liveCallDurationMinutes : null,
-              certificateOnCompletion,
-              accessType,
-              priceNaira: accessType === 'paid' ? Number(data.get('priceNaira')) : 0,
-              scheduledAt:
-                scheduleDate && scheduleTime
-                  ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
-                  : null,
-              modules: modules.map(({ title, content, resources }) => ({
-                title,
-                content,
-                resources: resources.flatMap((resource) =>
-                  resource.file ? [{ label: resource.label, file: resource.file }] : [],
-                ),
-              })),
-              files,
-            }
+            const draft = buildDraft()
             validatePendingCourseDraft(draft)
-            if (proceedToAssessment) {
-              await savePendingCourseDraft(draft)
-              router.push('/assessments/new?courseDraft=1')
-              return
-            }
-            const result = await createCourseFromDraft(draft)
-            router.push(`/courses?created=${result.course.id}`)
-            router.refresh()
+            await savePendingCourseDraft({ ...draft, stage: 'awaiting-assessment' })
+            router.push('/assessments/new?courseDraft=1')
           } catch (cause) {
-            setError(cause instanceof Error ? cause.message : 'Course could not be created')
+            setError(cause instanceof Error ? cause.message : 'The course draft could not be saved')
           } finally {
             setBusy(false)
           }
@@ -159,7 +219,13 @@ export function CourseCreateForm() {
           </div>
           <div className="ad-course-details-grid">
             <Field label="Course name" required>
-              <Input name="name" maxLength={160} required />
+              <Input
+                name="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                maxLength={160}
+                required
+              />
             </Field>
             <div className="ad-duration-field">
               <Field label="Duration in minutes" required>
@@ -169,6 +235,8 @@ export function CourseCreateForm() {
                   type="number"
                   min={1}
                   max={100000}
+                  value={durationMinutes}
+                  onChange={(event) => setDurationMinutes(Number(event.target.value))}
                   required
                 />
               </Field>
@@ -251,6 +319,8 @@ export function CourseCreateForm() {
                     min={0.01}
                     max={10_000_000}
                     step="0.01"
+                    value={priceNaira}
+                    onChange={(event) => setPriceNaira(event.target.value)}
                     required
                   />
                 </Field>
@@ -593,20 +663,11 @@ export function CourseCreateForm() {
           <FormMessage>{error}</FormMessage>
           <div className="sb-form-footer ad-course-create-actions">
             <Button
-              busy={busy}
-              type="submit"
-              variant="secondary"
-              disabled={type === 'premade' && !modules.length}
-            >
-              <UploadCloud aria-hidden="true" /> Proceed without assessment
-            </Button>
-            <Button
               type="submit"
               busy={busy}
-              data-next="assessment"
               disabled={type === 'premade' && !modules.length}
             >
-              Proceed with assessment <ArrowRight aria-hidden="true" />
+              Proceed to assessment <ArrowRight aria-hidden="true" />
             </Button>
           </div>
         </section>

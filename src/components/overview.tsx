@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { Badge } from '@danvic/ui'
-import { ArrowRight, FilePlus2 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import type { Assessment, AuthorPaymentTransaction, Course } from '@danvic/api-client'
 import { LiveCourseSchedule } from '@/components/live-course-schedule'
+import { CourseCreateButton } from '@/components/course-create-button'
 import { courseStudioHref } from '@/lib/course-route'
 
 const formatStartsIn = (index: number) =>
@@ -73,9 +74,7 @@ export function Overview({
       <header className="sb-page-header ad-overview-header">
         <h1>Overview</h1>
         <div className="sb-page-actions">
-          <Link href="/courses/new" className="sb-button sb-button--primary sb-button--md">
-            <FilePlus2 aria-hidden="true" /> Create course
-          </Link>
+          <CourseCreateButton />
         </div>
       </header>
 

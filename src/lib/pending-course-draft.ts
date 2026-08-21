@@ -27,6 +27,7 @@ export type PendingCourseDraft = {
   modules: PendingCourseModule[]
   files: File[]
   createdCourseId?: string
+  stage?: 'editing' | 'awaiting-assessment'
 }
 
 const DATABASE_NAME = 'danvic-author-workflow-drafts'

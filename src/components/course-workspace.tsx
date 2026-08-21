@@ -7,6 +7,7 @@ import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, CustomDropdown, Field, Input } from '@danvic/ui'
 import { CreditCard, Download, ExternalLink, FileText, Layers3, MoreHorizontal, Pencil, Radio, Unlock, X } from 'lucide-react'
 import styles from './course-workspace.module.css'
+import { CourseCreateButton } from '@/components/course-create-button'
 import { courseStudioHref } from '@/lib/course-route'
 
 const LIVE_CLASS_DURATIONS = Array.from({ length: 30 }, (_, index) => (index + 1) * 10)
@@ -70,9 +71,7 @@ export function CourseWorkspace({
           <p>Publish, update, and review every authored learning experience.</p>
         </div>
         <div className="sb-page-actions">
-          <Link href="/courses/new" className="sb-button sb-button--primary sb-button--md">
-            Create course
-          </Link>
+          <CourseCreateButton />
         </div>
       </header>
       <section className="ad-section ad-section--plain">

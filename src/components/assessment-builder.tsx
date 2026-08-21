@@ -52,7 +52,6 @@ export function AssessmentBuilder({
   const [questions, setQuestions] = useState<QuestionDraft[]>([newQuestion(1)])
   const [manualReview, setManualReview] = useState(false)
   const [courseId, setCourseId] = useState(initialCourseId)
-  const [linkToCourse, setLinkToCourse] = useState(Boolean(initialCourseId))
   const [maxAttempts, setMaxAttempts] = useState(initialAttempts)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -60,6 +59,7 @@ export function AssessmentBuilder({
   const [pendingCourseLoading, setPendingCourseLoading] = useState(createWithPendingCourse)
   const attachmentCount = questions.filter((question) => question.mediaFile).length
   const retriesEnabled = maxAttempts > 1
+  const hasWrittenResponse = questions.some((question) => question.type === 'free_text')
   const allMcqsHaveOneCorrectAnswer = questions.every(
     (question) =>
       question.type !== 'multiple_choice' ||
@@ -128,7 +128,9 @@ export function AssessmentBuilder({
                 points: question.points,
               })
             }
-            let assessmentCourseId = linkToCourse && courseId ? courseId : null
+            if (!createWithPendingCourse && !courseId)
+              throw new Error('Select the course this assessment belongs to')
+            let assessmentCourseId = courseId
             if (createWithPendingCourse) {
               if (!pendingCourse) {
                 throw new Error('The pending course draft is unavailable. Return to course creation and try again.')
@@ -160,8 +162,8 @@ export function AssessmentBuilder({
               }),
             })
             if (createWithPendingCourse) await clearPendingCourseDraft()
-            router.push(`/assessments/${result.id}/submissions`)
-            router.refresh()
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- static export: no prerendered payload exists for this route, so client-side routing shows not-found
+            window.location.assign(`/assessments/${result.id}/submissions`)
           } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Assessment could not be created')
           } finally {
@@ -176,7 +178,7 @@ export function AssessmentBuilder({
               <p>
                 {createWithPendingCourse
                   ? 'Complete the assessment below. The course and assessment will be created together when you submit.'
-                  : 'Link it to a course as the final step, or leave it standalone for direct access.'}
+                  : 'Every assessment is the final step of a course. Choose the course it belongs to.'}
               </p>
             </div>
           </div>
@@ -197,36 +199,18 @@ export function AssessmentBuilder({
                 </div>
               ) : (
                 <div className="as-linked-course-row">
-                  <label className="as-check-row">
-                    <input
-                      type="checkbox"
-                      checked={linkToCourse}
-                      onChange={(event) => {
-                        setLinkToCourse(event.target.checked)
-                        if (!event.target.checked) setCourseId('')
-                      }}
+                  <Field label="Course" required hint="Every assessment must belong to a course.">
+                    <CustomDropdown<string>
+                      value={courseId}
+                      onChange={setCourseId}
+                      placeholder="Choose a course"
+                      options={courses.map((course) => ({
+                        value: course.id,
+                        label: course.name,
+                        description: 'Unlocks for learners after course completion',
+                      }))}
                     />
-                    <span>
-                      <strong>Linked course (optional)</strong>
-                      <small>
-                        Require learners to complete a course before this assessment unlocks.
-                      </small>
-                    </span>
-                  </label>
-                  {linkToCourse ? (
-                    <Field label="Course" required>
-                      <CustomDropdown<string>
-                        value={courseId}
-                        onChange={setCourseId}
-                        placeholder="Choose a course"
-                        options={courses.map((course) => ({
-                          value: course.id,
-                          label: course.name,
-                          description: 'Unlock assessment after completion',
-                        }))}
-                      />
-                    </Field>
-                  ) : null}
+                  </Field>
                 </div>
               )}
             </div>
@@ -284,12 +268,15 @@ export function AssessmentBuilder({
             <input
               type="checkbox"
               checked={manualReview}
+              disabled={hasWrittenResponse}
               onChange={(event) => setManualReview(event.target.checked)}
             />
             <span>
               <strong>Review all answers manually</strong>
               <small>
-                Leave off to mark MCQs automatically. Written answers always require review.
+                {hasWrittenResponse
+                  ? 'Written answers require manual review, so this is always on.'
+                  : 'Leave off to mark MCQs automatically.'}
               </small>
             </span>
           </label>
@@ -353,6 +340,7 @@ export function AssessmentBuilder({
                                 ? newQuestion(index + 1).options
                                 : question.options,
                           })
+                          if (type === 'free_text') setManualReview(true)
                         }}
                         options={[
                           {
@@ -509,15 +497,21 @@ export function AssessmentBuilder({
         <section className="ad-section">
           <FormMessage>{error}</FormMessage>
           <div className="sb-form-footer">
-            <Button type="button" variant="ghost" onClick={() => router.back()}>
-              Cancel
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() =>
+                createWithPendingCourse ? router.push('/courses/new') : router.back()
+              }
+            >
+              {createWithPendingCourse ? 'Back to course' : 'Cancel'}
             </Button>
             <Button
               busy={busy}
               disabled={!allMcqsHaveOneCorrectAnswer || (createWithPendingCourse && !pendingCourse)}
             >
               <CheckSquare2 aria-hidden="true" />
-              {createWithPendingCourse ? 'Create course and assessment' : 'Create assessment'}
+              {createWithPendingCourse ? 'Create course with assessment' : 'Create assessment'}
             </Button>
           </div>
         </section>
