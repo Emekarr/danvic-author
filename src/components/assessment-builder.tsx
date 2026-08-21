@@ -42,11 +42,13 @@ export function AssessmentBuilder({
   initialCourseId = '',
   initialAttempts = 1,
   createWithPendingCourse = false,
+  onBackToCourse,
 }: {
   courses: Course[]
   initialCourseId?: string
   initialAttempts?: number
   createWithPendingCourse?: boolean
+  onBackToCourse?: () => void
 }) {
   const router = useRouter()
   const [questions, setQuestions] = useState<QuestionDraft[]>([newQuestion(1)])
@@ -501,7 +503,11 @@ export function AssessmentBuilder({
               type="button"
               variant="ghost"
               onClick={() =>
-                createWithPendingCourse ? router.push('/courses/new') : router.back()
+                onBackToCourse
+                  ? onBackToCourse()
+                  : createWithPendingCourse
+                    ? router.push('/courses/new')
+                    : router.back()
               }
             >
               {createWithPendingCourse ? 'Back to course' : 'Cancel'}

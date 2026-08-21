@@ -9,7 +9,7 @@ export default function NewCoursePage() {
       <PageHeader
         eyebrow="Course builder"
         title="Create a course"
-        description="Provide course details, ordered modules, and optional attachments. Your progress is saved automatically, and you will finish by creating the course assessment."
+        description="Provide course details, ordered modules, and optional attachments. Your progress is saved automatically. Proceed with the final assessment, or publish the course as is."
       />
       <CourseCreateForm />
     </>
