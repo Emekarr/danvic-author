@@ -21,9 +21,6 @@ import {
   Bold,
   Code2,
   Columns3,
-  Expand,
-  ExternalLink,
-  FileInput,
   Highlighter,
   ImagePlus,
   IndentDecrease,
@@ -33,14 +30,12 @@ import {
   List,
   ListChecks,
   ListOrdered,
-  LoaderCircle,
   Minus,
   PaintBucket,
   Quote,
   Redo2,
   RemoveFormatting,
   Rows3,
-  Shrink,
   Strikethrough,
   Subscript,
   Superscript,
@@ -384,21 +379,20 @@ export function ModuleEditor({
         <div className="ad-module-editor-head-actions">
           <button
             type="button"
-            className="ad-module-editor-focus ad-module-editor-import"
+            className="ad-module-editor-focus"
             disabled={importing}
             onClick={requestWordImport}
           >
-            {importing ? <LoaderCircle className="ad-spin" aria-hidden="true" /> : <FileInput aria-hidden="true" />}
             {importing ? 'Importing…' : 'Import Word document'}
           </button>
           {documentId && !standalone ? (
             <button type="button" className="ad-module-editor-focus" onClick={openDocumentTab}>
-              <ExternalLink aria-hidden="true" /> Open in new tab
+              Open in new tab
             </button>
           ) : null}
           {standalone ? (
             <button type="button" className="ad-module-editor-focus" onClick={() => window.close()}>
-              <Shrink aria-hidden="true" /> Done writing
+              Done
             </button>
           ) : (
             <button
@@ -406,7 +400,6 @@ export function ModuleEditor({
               className="ad-module-editor-focus"
               onClick={() => setFocusMode((current) => !current)}
             >
-              {focusMode ? <Shrink aria-hidden="true" /> : <Expand aria-hidden="true" />}
               {focusMode ? 'Exit focus mode' : 'Focus mode'}
             </button>
           )}
@@ -432,12 +425,8 @@ export function ModuleEditor({
           <TriangleAlert aria-hidden="true" />
         </div>
         <div className="ad-module-import-warning-copy">
-          <span>Replace existing content?</span>
-          <h2 id={`module-import-warning-${documentId ?? 'editor'}`}>Import a Word document</h2>
-          <p>
-            Continuing will clear everything currently written in this module and replace it with
-            the selected Word document.
-          </p>
+          <h2 id={`module-import-warning-${documentId ?? 'editor'}`}>Replace existing content?</h2>
+          <p>Importing a Word document will replace everything currently written in this module.</p>
         </div>
         <div className="ad-module-import-warning-actions">
           <button type="button" onClick={() => importWarningRef.current?.close()}>
