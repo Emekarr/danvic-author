@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import type {
   IAgoraRTCClient,
   ICameraVideoTrack,
@@ -216,12 +217,18 @@ function Classroom({
   const [moreOpen, setMoreOpen] = useState(false)
   const [reactionsOpen, setReactionsOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsTab, setDetailsTab] = useState<'messages' | 'people'>('messages')
+  const reactionButtonRef = useRef<HTMLButtonElement>(null)
   const moderationInFlightRef = useRef(false)
   const session = (state?.session ?? join.session) as LiveState['session'] & {
     whiteboardActive?: boolean
     whiteboardUsedAt?: string | null
   }
   const whiteboardActive = Boolean(session.whiteboardActive && join.whiteboard)
+  const activeParticipants = (state?.participants ?? []).filter((participant) => !participant.leftAt)
+  const otherParticipantCount = activeParticipants.filter((participant) => participant.id !== join.participant.id).length
+  const hasOtherParticipants = otherParticipantCount > 0 || rtc.remoteVideos.length > 0
+  const visibleParticipantCount = Math.max(activeParticipants.length, rtc.remoteVideos.length + 1)
   const refresh = useCallback(async () => {
     try {
       const value = await api<LiveState>(`/api/live/live-sessions/${join.session.id}/state`)
@@ -370,11 +377,18 @@ function Classroom({
             <Whiteboard config={join.whiteboard} uid={`author-${join.participant.actorId}`} />
           ) : (
             <div className="lc-video-grid">
-              {!rtc.remoteVideos.length && (
+              {!hasOtherParticipants && (
                 <div className="lc-alone-state">
                   <Users />
                   <strong>You’re the only one here</strong>
                   <span>Students will appear here automatically when they join the class.</span>
+                </div>
+              )}
+              {hasOtherParticipants && !rtc.remoteVideos.length && (
+                <div className="lc-alone-state lc-presence-state">
+                  <Users />
+                  <strong>{visibleParticipantCount} people are in class</strong>
+                  <span>No one is sharing a camera or screen right now. Class audio continues automatically.</span>
                 </div>
               )}
               <LocalVideo
@@ -394,16 +408,28 @@ function Classroom({
             <div><strong>Class details</strong><span>People and messages</span></div>
             <button type="button" aria-label="Close class details" onClick={() => setDetailsOpen(false)}><X /></button>
           </div>
-          <ParticipantPanel
-            participants={state?.participants ?? []}
-            moderate={moderate}
-            moderationPending={moderationPending}
-          />
-          <Chat sessionId={join.session.id} messages={state?.messages ?? []} />
+          <div className={`lc-details-tabs${detailsTab === 'people' ? ' is-people' : ''}`} role="tablist" aria-label="Class details">
+            <button type="button" role="tab" aria-selected={detailsTab === 'messages'} aria-controls="author-class-messages" onClick={() => setDetailsTab('messages')}>Messages</button>
+            <button type="button" role="tab" aria-selected={detailsTab === 'people'} aria-controls="author-class-people" onClick={() => setDetailsTab('people')}>People</button>
+          </div>
+          <div className="lc-details-pages">
+            <div className={`lc-details-track is-${detailsTab}`}>
+              <div className="lc-details-page" id="author-class-messages" role="tabpanel" aria-hidden={detailsTab !== 'messages'} inert={detailsTab !== 'messages'}>
+                <Chat sessionId={join.session.id} messages={state?.messages ?? []} currentActorType="author" />
+              </div>
+              <div className="lc-details-page" id="author-class-people" role="tabpanel" aria-hidden={detailsTab !== 'people'} inert={detailsTab !== 'people'}>
+                <ParticipantPanel
+                  participants={state?.participants ?? []}
+                  moderate={moderate}
+                  moderationPending={moderationPending}
+                />
+              </div>
+            </div>
+          </div>
         </aside>
       </div>
       <footer className="lc-controls">
-        {reactionsOpen && <ReactionTray onSelect={sendReaction} />}
+        {reactionsOpen && <ReactionTray anchorRef={reactionButtonRef} onSelect={sendReaction} onClose={() => setReactionsOpen(false)} />}
         <button type="button" className={rtc.cameraOn ? 'is-active' : 'is-off'} disabled={!rtc.joined} onClick={() => toggle('cameraOn')}>
           {rtc.cameraOn ? <Camera /> : <CameraOff />}
           <span>Camera</span>
@@ -413,6 +439,7 @@ function Classroom({
           <span>Microphone</span>
         </button>
         <button
+          ref={reactionButtonRef}
           type="button"
           className={reactionsOpen ? 'is-active' : ''}
           aria-expanded={reactionsOpen}
@@ -791,21 +818,46 @@ function ParticipantActionMenu({
   const [working, setWorking] = useState<ModerationAction | null>(null)
   const [menuError, setMenuError] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null)
+  const updateMenuPosition = useCallback(() => {
+    const trigger = menuRef.current?.getBoundingClientRect()
+    if (!trigger) return
+    const gutter = 12
+    const width = Math.min(320, window.innerWidth - gutter * 2)
+    const maxHeight = Math.min(420, window.innerHeight - gutter * 2)
+    const spaceBelow = window.innerHeight - trigger.bottom - gutter
+    const spaceAbove = trigger.top - gutter
+    const openAbove = spaceBelow < Math.min(320, maxHeight) && spaceAbove > spaceBelow
+    const preferredTop = openAbove ? trigger.top - maxHeight - 8 : trigger.bottom + 8
+    setMenuPosition({
+      top: Math.max(gutter, Math.min(preferredTop, window.innerHeight - maxHeight - gutter)),
+      left: Math.max(gutter, Math.min(trigger.right - width, window.innerWidth - width - gutter)),
+      width,
+      maxHeight,
+    })
+  }, [])
   useEffect(() => {
     if (!open) return
     const dismiss = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      if (!menuRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false)
     }
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
     document.addEventListener('pointerdown', dismiss)
     document.addEventListener('keydown', escape)
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
+    updateMenuPosition()
     return () => {
       document.removeEventListener('pointerdown', dismiss)
       document.removeEventListener('keydown', escape)
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
     }
-  }, [open])
+  }, [open, updateMenuPosition])
   const options: Array<{
     action: ModerationAction
     name: string
@@ -846,8 +898,14 @@ function ParticipantActionMenu({
       >
         <EllipsisVertical />
       </button>
-      {open && (
-        <div className="lc-person-menu-popover" role="menu" aria-label={`Actions for ${participant.displayName}`}>
+      {open && menuPosition && createPortal(
+        <div
+          className="lc-person-menu-popover"
+          ref={popoverRef}
+          role="menu"
+          aria-label={`Actions for ${participant.displayName}`}
+          style={menuPosition}
+        >
           <div className="lc-person-menu-title">
             <strong>Manage attendee</strong>
             <span>Choose one action for {participant.displayName}.</span>
@@ -869,12 +927,13 @@ function ParticipantActionMenu({
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
 }
-function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessage[] }) {
+function Chat({ sessionId, messages, currentActorType }: { sessionId: string; messages: LiveMessage[]; currentActorType: LiveMessage['actorType'] }) {
   const [body, setBody] = useState('')
   const send = async (kind: 'chat' | 'reaction', value: string) => {
     if (!value.trim()) return
@@ -886,15 +945,15 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
   }
   return (
     <section className="lc-panel lc-chat">
-      <h3>
-        <MessageCircle /> Live chat
-      </h3>
       <div className="lc-messages">
-        {messages.map((message) => (
-          <p key={message.id}>
-            <strong>{message.displayName}</strong> {message.body}
-          </p>
-        ))}
+        {messages.length ? messages.map((message) => (
+          <article className={`lc-message${message.actorType === currentActorType ? ' is-own' : ''}${message.kind !== 'chat' ? ' is-event' : ''}`} key={message.id}>
+            <span className="lc-message-author">{message.displayName}</span>
+            <p>{message.body}</p>
+          </article>
+        )) : (
+          <div className="lc-chat-empty"><MessageCircle /><strong>No messages yet</strong><span>Start the class conversation here.</span></div>
+        )}
       </div>
       <form
         onSubmit={(event) => {
@@ -917,12 +976,32 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
 }
 
 function ReactionTray({
+  anchorRef,
   onSelect,
+  onClose,
 }: {
+  anchorRef: { current: HTMLButtonElement | null }
   onSelect: (value: string) => Promise<void>
+  onClose: () => void
 }) {
+  const trayRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (!trayRef.current?.contains(target) && !anchorRef.current?.contains(target)) onClose()
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('pointerdown', dismiss)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', dismiss)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [anchorRef, onClose])
   return (
-    <div className="lc-dock-reactions" role="dialog" aria-label="Choose a reaction">
+    <div className="lc-dock-reactions" ref={trayRef} role="dialog" aria-label="Choose a reaction">
       {['👍', '👏', '❤️', '🎉', '😂', '🤔', '🔥', '🙌'].map((emoji) => (
         <button type="button" key={emoji} aria-label={`React with ${emoji}`} onClick={() => void onSelect(emoji)}>
           {emoji}
