@@ -3,28 +3,29 @@
 .lc-shell {
   --lc-bg: #080a0c;
   --lc-surface: #171a1e;
-  --lc-surface-raised: #24282d;
-  --lc-surface-soft: #30353a;
+  --lc-surface-raised: #252a2a;
+  --lc-surface-soft: #313737;
   --lc-line: rgba(255, 255, 255, 0.1);
   --lc-text: #f7f8fa;
   --lc-muted: #a9b0ba;
-  --lc-accent: #9dc3ff;
-  --lc-accent-ink: #102a56;
+  --lc-accent: #bad9cd;
+  --lc-accent-ink: #17382f;
   --lc-danger: #e24b3f;
-  position: relative;
+  position: fixed;
   isolation: isolate;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  width: min(1540px, calc(100vw - 32px));
-  height: min(900px, calc(100dvh - 32px));
-  min-height: 680px;
-  margin: 16px auto;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
   overflow: hidden;
   color: var(--lc-text);
   background: var(--lc-bg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 30px;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .lc-shell button {
@@ -65,7 +66,8 @@
 .lc-minimize:hover,
 .lc-details-heading button:hover,
 .lc-sheet-heading button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  color: #e6f2ed;
+  background: rgba(186, 217, 205, 0.14);
 }
 
 .lc-minimize svg,
@@ -156,8 +158,9 @@
 }
 
 .lc-layout {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
   background: #0a0c0e;
@@ -317,15 +320,32 @@
 }
 
 .lc-sidebar {
+  position: absolute;
+  z-index: 38;
+  top: 14px;
+  right: 14px;
+  bottom: 14px;
   display: grid;
   grid-template-rows: auto minmax(190px, 0.65fr) minmax(260px, 1fr);
+  width: min(380px, calc(100% - 28px));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
   color: var(--lc-text);
-  background: #14171a;
-  border: 0;
-  border-left: 1px solid var(--lc-line);
+  background: rgba(29, 33, 34, 0.98);
+  border: 1px solid var(--lc-line);
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(calc(100% + 28px));
+  transition: opacity 180ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lc-sidebar.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .lc-details-heading {
@@ -353,7 +373,7 @@
 }
 
 .lc-details-heading button {
-  display: none;
+  display: inline-grid;
 }
 
 .lc-panel {
@@ -412,7 +432,16 @@
   scrollbar-width: thin;
 }
 
+.lc-participants {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 3px;
+}
+
 .lc-person {
+  flex: 0 0 auto;
   position: relative;
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) auto;
@@ -542,7 +571,7 @@
 
 .lc-chat form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   padding: 10px;
   border-top: 1px solid var(--lc-line);
@@ -560,7 +589,7 @@
 }
 
 .lc-chat input:focus {
-  border-color: rgba(157, 195, 255, 0.72);
+  border-color: rgba(186, 217, 205, 0.7);
 }
 
 .lc-chat input::placeholder {
@@ -568,16 +597,34 @@
 }
 
 .lc-chat form button {
-  display: grid;
-  place-items: center;
-  width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: auto;
+  min-width: 84px;
   height: 40px;
-  padding: 0;
+  padding: 0 13px;
   color: var(--lc-accent-ink);
   background: var(--lc-accent);
   border: 0;
   border-radius: 13px;
   cursor: pointer;
+}
+
+.lc-chat form button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.lc-chat form button span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lc-chat form button:hover {
+  color: #102a23;
+  background: #d3e7df;
 }
 
 .lc-controls {
@@ -616,7 +663,8 @@
 }
 
 .lc-controls > button:hover:not(:disabled) {
-  background: #373c42;
+  color: #eef7f3;
+  background: #3b4242;
   transform: translateY(-1px);
 }
 
@@ -668,6 +716,8 @@
   border-radius: 18px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.44);
   transform: translateX(-50%);
+  transform-origin: bottom center;
+  animation: lc-reaction-reveal 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .lc-dock-reactions button {
@@ -685,7 +735,7 @@
 }
 
 .lc-dock-reactions button:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(186, 217, 205, 0.14);
   transform: translateY(-2px);
 }
 
@@ -710,6 +760,7 @@
   padding: 24px;
   background: rgba(0, 0, 0, 0.58);
   backdrop-filter: blur(5px);
+  animation: lc-backdrop-reveal 180ms ease both;
 }
 
 .lc-more-sheet {
@@ -718,10 +769,11 @@
   padding: 12px 16px 18px;
   overflow: auto;
   color: var(--lc-text);
-  background: #23272b;
+  background: #242929;
   border: 1px solid var(--lc-line);
   border-radius: 28px;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+  animation: lc-sheet-slide-up 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .lc-sheet-handle {
@@ -759,6 +811,11 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  align-items: stretch;
+}
+
+.lc-sheet-grid:has(> :nth-child(4):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lc-sheet-grid > button {
@@ -775,10 +832,14 @@
   border: 1px solid transparent;
   border-radius: 20px;
   cursor: pointer;
+  align-content: start;
+  transition: color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
 .lc-sheet-grid > button:hover:not(:disabled) {
-  background: #393e44;
+  color: #f1f8f5;
+  background: #3c4443;
+  transform: translateY(-1px);
 }
 
 .lc-sheet-grid > button:disabled {
@@ -795,6 +856,7 @@
   color: #e9edf2;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 14px;
+  align-self: start;
 }
 
 .lc-sheet-grid > button svg {
@@ -829,7 +891,7 @@
 }
 
 .lc-sheet-grid > button.is-selected small {
-  color: rgba(16, 42, 86, 0.76);
+  color: rgba(23, 56, 47, 0.76);
 }
 
 .lc-sheet-grid > button.is-danger {
@@ -837,11 +899,27 @@
   background: rgba(186, 55, 45, 0.25);
 }
 
-@media (max-width: 1050px) {
-  .lc-layout {
-    grid-template-columns: minmax(0, 1fr) 310px;
-  }
+.lc-shell button:focus-visible {
+  outline: 2px solid rgba(186, 217, 205, 0.9);
+  outline-offset: 2px;
+}
 
+@keyframes lc-backdrop-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lc-sheet-slide-up {
+  from { opacity: 0; transform: translateY(40px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes lc-reaction-reveal {
+  from { opacity: 0; transform: translate(-50%, 14px) scale(0.94); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@media (max-width: 1050px) {
   .lc-session-meta .lc-mode-status {
     display: none;
   }
@@ -988,6 +1066,7 @@
   .lc-sidebar {
     position: fixed;
     z-index: 1070;
+    top: auto;
     right: 0;
     bottom: 0;
     left: 0;
@@ -1004,6 +1083,7 @@
   }
 
   .lc-sidebar.is-open {
+    opacity: 1;
     transform: translateY(0);
   }
 
@@ -1116,6 +1196,16 @@
 
   .lc-sheet-grid > button small {
     min-height: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-sidebar,
+  .lc-sheet-backdrop,
+  .lc-more-sheet,
+  .lc-dock-reactions {
+    animation: none;
+    transition: none;
   }
 }
 

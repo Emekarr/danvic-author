@@ -22,9 +22,9 @@ import {
 } from '@danvic/api-client'
 import {
   Ban as BanIcon,
+  ArrowLeft,
   Camera,
   CameraOff,
-  ChevronDown,
   CircleStop,
   Ellipsis,
   EllipsisVertical,
@@ -38,6 +38,7 @@ import {
   PhoneOff,
   Radio,
   ScreenShareOff,
+  Send,
   PenLine,
   ShieldCheck,
   SmilePlus,
@@ -341,7 +342,7 @@ function Classroom({
           aria-label="Minimize classroom"
           onClick={() => router.push('/live-classes')}
         >
-          <ChevronDown />
+          <ArrowLeft />
         </button>
         <div className="lc-session-heading">
           <span className="lc-live-pill"><span className="lc-live-dot" /> Live</span>
@@ -402,7 +403,7 @@ function Classroom({
         </aside>
       </div>
       <footer className="lc-controls">
-        {reactionsOpen && <ReactionTray onSelect={sendReaction} onClose={() => setReactionsOpen(false)} />}
+        {reactionsOpen && <ReactionTray onSelect={sendReaction} />}
         <button type="button" className={rtc.cameraOn ? 'is-active' : 'is-off'} disabled={!rtc.joined} onClick={() => toggle('cameraOn')}>
           {rtc.cameraOn ? <Camera /> : <CameraOff />}
           <span>Camera</span>
@@ -440,8 +441,8 @@ function Classroom({
             <span className="lc-sheet-handle" />
             <div className="lc-sheet-heading"><div><strong>Class controls</strong><span>Manage your live session</span></div><button type="button" aria-label="Close controls" onClick={() => setMoreOpen(false)}><X /></button></div>
             <div className="lc-sheet-grid">
-              <button type="button" className={rtc.screenSharing ? 'is-selected' : ''} disabled={!rtc.joined} onClick={() => void toggle('screenSharing')}><span>{rtc.screenSharing ? <ScreenShareOff /> : <MonitorUp />}</span><strong>{rtc.screenSharing ? 'Stop sharing' : 'Share screen'}</strong><small>Present a browser tab or screen.</small></button>
-              <button type="button" className={whiteboardActive ? 'is-selected' : ''} disabled={!rtc.joined || !join.whiteboard} onClick={() => void toggleWhiteboard()}><span><PenLine /></span><strong>{whiteboardActive ? 'Show cameras' : 'Whiteboard'}</strong><small>Switch the class presentation mode.</small></button>
+              <button type="button" className={rtc.screenSharing ? 'is-selected' : ''} disabled={!rtc.joined} onClick={() => { setMoreOpen(false); void toggle('screenSharing') }}><span>{rtc.screenSharing ? <ScreenShareOff /> : <MonitorUp />}</span><strong>{rtc.screenSharing ? 'Stop sharing' : 'Share screen'}</strong><small>Present a browser tab or screen.</small></button>
+              <button type="button" className={whiteboardActive ? 'is-selected' : ''} disabled={!rtc.joined || !join.whiteboard} onClick={() => { setMoreOpen(false); void toggleWhiteboard() }}><span><PenLine /></span><strong>{whiteboardActive ? 'Show cameras' : 'Whiteboard'}</strong><small>Switch the class presentation mode.</small></button>
               <button type="button" onClick={() => { setDetailsOpen(true); setMoreOpen(false) }}><span><Users /></span><strong>People & chat</strong><small>View attendees, moderation and messages.</small></button>
               <button type="button" disabled={Boolean(moderationPending)} onClick={() => void moderate('mute-all').catch(() => undefined)}><span><MicOff /></span><strong>{moderationPending === 'mute-all' ? 'Muting…' : 'Mute class'}</strong><small>Turn off all student microphones.</small></button>
               <button type="button" disabled={Boolean(moderationPending)} onClick={() => void moderate('camera-off-all').catch(() => undefined)}><span><CameraOff /></span><strong>{moderationPending === 'camera-off-all' ? 'Turning off…' : 'Cameras off'}</strong><small>Turn off all student cameras.</small></button>
@@ -907,7 +908,8 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
           placeholder="Message the class"
         />
         <button type="submit" aria-label="Send message">
-          <MessageCircle />
+          <Send />
+          <span>Send</span>
         </button>
       </form>
     </section>
@@ -916,10 +918,8 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
 
 function ReactionTray({
   onSelect,
-  onClose,
 }: {
   onSelect: (value: string) => Promise<void>
-  onClose: () => void
 }) {
   return (
     <div className="lc-dock-reactions" role="dialog" aria-label="Choose a reaction">
@@ -928,7 +928,6 @@ function ReactionTray({
           {emoji}
         </button>
       ))}
-      <button type="button" className="lc-reactions-close" aria-label="Close reactions" onClick={onClose}><X /></button>
     </div>
   )
 }
