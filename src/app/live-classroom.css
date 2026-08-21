@@ -177,6 +177,43 @@
     #090b0d;
 }
 
+.lc-tutor-presence {
+  position: absolute;
+  z-index: 18;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 11px;
+  color: #c3c9ce;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(18, 21, 23, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  backdrop-filter: blur(12px);
+}
+
+.lc-tutor-presence > span {
+  width: 7px;
+  height: 7px;
+  background: #9ba1a8;
+  border-radius: 50%;
+}
+
+.lc-tutor-presence.is-online {
+  color: #dcece6;
+  background: rgba(36, 73, 60, 0.84);
+  border-color: rgba(146, 211, 185, 0.2);
+}
+
+.lc-tutor-presence.is-online > span {
+  background: #72dda8;
+  box-shadow: 0 0 0 4px rgba(114, 221, 168, 0.12);
+}
+
 .lc-video-grid {
   position: absolute;
   inset: 16px;
@@ -695,6 +732,28 @@
   border-radius: 16px 16px 5px 16px;
 }
 
+.lc-message.is-sending {
+  opacity: 0.48;
+  filter: saturate(0.5);
+  box-shadow: none;
+}
+
+.lc-message.is-failed {
+  opacity: 0.62;
+  color: #ffd7d4;
+  background: rgba(128, 43, 36, 0.34);
+  border: 1px dashed rgba(255, 151, 142, 0.42);
+  box-shadow: none;
+}
+
+.lc-message-status {
+  justify-self: end;
+  color: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  opacity: 0.72;
+}
+
 .lc-message.is-event {
   align-self: center;
   max-width: 94%;
@@ -724,6 +783,44 @@
   color: inherit;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.lc-reaction-activity {
+  align-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  max-width: 90%;
+  padding: 5px 10px;
+  color: #aeb6bd;
+  text-align: center;
+}
+
+.lc-reaction-activity span {
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.lc-reaction-activity span strong {
+  color: #dce2df;
+  font-weight: 750;
+}
+
+.lc-reaction-activity b {
+  font-size: 27px;
+  font-weight: 400;
+  line-height: 1;
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.22));
+}
+
+.lc-system-activity {
+  align-self: center;
+  max-width: 90%;
+  padding: 4px 10px;
+  color: #949ca4;
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .lc-chat-empty {
@@ -814,6 +911,11 @@
 .lc-chat form button:hover {
   color: #102a23;
   background: #d3e7df;
+}
+
+.lc-chat form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .lc-controls {
@@ -1209,6 +1311,14 @@
     width: 100%;
     height: 100%;
     padding: 10px;
+  }
+
+  .lc-tutor-presence {
+    top: 12px;
+    left: 12px;
+    min-height: 30px;
+    padding-inline: 10px;
+    font-size: 10px;
   }
 
   .lc-video-grid {
