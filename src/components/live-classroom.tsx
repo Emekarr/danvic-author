@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type {
   IAgoraRTCClient,
   ICameraVideoTrack,
@@ -23,7 +24,9 @@ import {
   Ban as BanIcon,
   Camera,
   CameraOff,
+  ChevronDown,
   CircleStop,
+  Ellipsis,
   EllipsisVertical,
   Hand,
   Maximize2,
@@ -32,6 +35,7 @@ import {
   MicOff,
   Minimize2,
   MonitorUp,
+  PhoneOff,
   Radio,
   ScreenShareOff,
   PenLine,
@@ -40,6 +44,7 @@ import {
   UserRoundX,
   Users,
   Video,
+  X,
 } from 'lucide-react'
 
 type ModerationAction =
@@ -204,8 +209,12 @@ function Classroom({
   onEnd: () => Promise<void>
   onExpired: () => void
 }) {
+  const router = useRouter()
   const rtc = useRtc(join, setError)
   const [moderationPending, setModerationPending] = useState<ModerationAction | null>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [reactionsOpen, setReactionsOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const moderationInFlightRef = useRef(false)
   const session = (state?.session ?? join.session) as LiveState['session'] & {
     whiteboardActive?: boolean
@@ -311,9 +320,29 @@ function Classroom({
     )
     setRecording(result.recording)
   }
+  const sendReaction = async (value: string) => {
+    try {
+      await api(`/api/live/live-sessions/${join.session.id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'reaction', body: value }),
+      })
+      setReactionsOpen(false)
+      await refresh()
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Could not send your reaction.')
+    }
+  }
   return (
     <main className="lc-shell">
       <header className="lc-top lc-top--studio">
+        <button
+          type="button"
+          className="lc-minimize"
+          aria-label="Minimize classroom"
+          onClick={() => router.push('/live-classes')}
+        >
+          <ChevronDown />
+        </button>
         <div className="lc-session-heading">
           <span className="lc-live-pill"><span className="lc-live-dot" /> Live</span>
           <span>
@@ -332,51 +361,6 @@ function Classroom({
             </span>
           )}
         </div>
-        <div className="lc-actions">
-          <button
-            type="button"
-            className="sb-button sb-button--secondary sb-button--sm"
-            title="Mute every student currently publishing audio"
-            disabled={Boolean(moderationPending)}
-            onClick={() => void moderate('mute-all').catch(() => undefined)}
-          >
-            <MicOff /> {moderationPending === 'mute-all' ? 'Muting…' : 'Mute class'}
-          </button>
-          <button
-            type="button"
-            className="sb-button sb-button--secondary sb-button--sm"
-            title="Turn off every student camera"
-            disabled={Boolean(moderationPending)}
-            onClick={() => void moderate('camera-off-all').catch(() => undefined)}
-          >
-            <CameraOff /> {moderationPending === 'camera-off-all' ? 'Turning off…' : 'Cameras off'}
-          </button>
-          {recording?.status === 'recording' ? (
-            <button type="button" className="sb-button sb-button--danger sb-button--sm" onClick={stopRecord}>
-              <CircleStop /> Stop recording
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="sb-button sb-button--secondary sb-button--sm"
-                onClick={() => record('web')}
-              >
-                <Video /> Record page
-              </button>
-              <button
-                type="button"
-                className="sb-button sb-button--secondary sb-button--sm"
-                onClick={() => record('audio')}
-              >
-                <Mic /> Record audio
-              </button>
-            </>
-          )}
-          <button type="button" className="sb-button sb-button--danger sb-button--sm" onClick={onEnd}>
-            End class
-          </button>
-        </div>
       </header>
       {error && <p className="lc-error" role="alert">{error}</p>}
       <div className="lc-layout">
@@ -385,6 +369,13 @@ function Classroom({
             <Whiteboard config={join.whiteboard} uid={`author-${join.participant.actorId}`} />
           ) : (
             <div className="lc-video-grid">
+              {!rtc.remoteVideos.length && (
+                <div className="lc-alone-state">
+                  <Users />
+                  <strong>You’re the only one here</strong>
+                  <span>Students will appear here automatically when they join the class.</span>
+                </div>
+              )}
               <LocalVideo
                 track={rtc.cameraTrack}
                 cameraOn={rtc.cameraOn}
@@ -397,7 +388,11 @@ function Classroom({
             </div>
           )}
         </section>
-        <aside className="lc-sidebar">
+        <aside className={`lc-sidebar${detailsOpen ? ' is-open' : ''}`}>
+          <div className="lc-details-heading">
+            <div><strong>Class details</strong><span>People and messages</span></div>
+            <button type="button" aria-label="Close class details" onClick={() => setDetailsOpen(false)}><X /></button>
+          </div>
           <ParticipantPanel
             participants={state?.participants ?? []}
             moderate={moderate}
@@ -407,23 +402,61 @@ function Classroom({
         </aside>
       </div>
       <footer className="lc-controls">
-        <button type="button" className={rtc.microphoneOn ? 'is-active' : ''} disabled={!rtc.joined} onClick={() => toggle('microphoneOn')}>
-          {rtc.microphoneOn ? <Mic /> : <MicOff />}
-          <span>{rtc.microphoneOn ? 'Mute' : 'Unmute'}</span>
-        </button>
-        <button type="button" className={rtc.cameraOn ? 'is-active' : ''} disabled={!rtc.joined} onClick={() => toggle('cameraOn')}>
+        {reactionsOpen && <ReactionTray onSelect={sendReaction} onClose={() => setReactionsOpen(false)} />}
+        <button type="button" className={rtc.cameraOn ? 'is-active' : 'is-off'} disabled={!rtc.joined} onClick={() => toggle('cameraOn')}>
           {rtc.cameraOn ? <Camera /> : <CameraOff />}
-          <span>{rtc.cameraOn ? 'Turn camera off' : 'Turn camera on'}</span>
+          <span>Camera</span>
         </button>
-        <button type="button" className={rtc.screenSharing ? 'is-active' : ''} disabled={!rtc.joined} onClick={() => toggle('screenSharing')}>
-          {rtc.screenSharing ? <ScreenShareOff /> : <MonitorUp />}
-          <span>{rtc.screenSharing ? 'Stop share' : 'Share screen'}</span>
+        <button type="button" className={rtc.microphoneOn ? 'is-active' : 'is-off'} disabled={!rtc.joined} onClick={() => toggle('microphoneOn')}>
+          {rtc.microphoneOn ? <Mic /> : <MicOff />}
+          <span>Microphone</span>
         </button>
-        <button type="button" className={whiteboardActive ? 'is-active' : ''} disabled={!rtc.joined || !join.whiteboard} onClick={toggleWhiteboard}>
-          <PenLine />
-          <span>{whiteboardActive ? 'Show cameras' : 'Open whiteboard'}</span>
+        <button
+          type="button"
+          className={reactionsOpen ? 'is-active' : ''}
+          aria-expanded={reactionsOpen}
+          onClick={() => { setMoreOpen(false); setReactionsOpen((value) => !value) }}
+        >
+          <SmilePlus />
+          <span>React</span>
+        </button>
+        <button
+          type="button"
+          className={moreOpen ? 'is-active' : ''}
+          aria-expanded={moreOpen}
+          onClick={() => { setReactionsOpen(false); setMoreOpen((value) => !value) }}
+        >
+          <Ellipsis />
+          <span>More</span>
+        </button>
+        <button type="button" className="is-danger" onClick={() => void onEnd()}>
+          <PhoneOff />
+          <span>End class</span>
         </button>
       </footer>
+      {moreOpen && (
+        <div className="lc-sheet-backdrop" onClick={() => setMoreOpen(false)}>
+          <section className="lc-more-sheet" role="dialog" aria-modal="true" aria-label="More class controls" onClick={(event) => event.stopPropagation()}>
+            <span className="lc-sheet-handle" />
+            <div className="lc-sheet-heading"><div><strong>Class controls</strong><span>Manage your live session</span></div><button type="button" aria-label="Close controls" onClick={() => setMoreOpen(false)}><X /></button></div>
+            <div className="lc-sheet-grid">
+              <button type="button" className={rtc.screenSharing ? 'is-selected' : ''} disabled={!rtc.joined} onClick={() => void toggle('screenSharing')}><span>{rtc.screenSharing ? <ScreenShareOff /> : <MonitorUp />}</span><strong>{rtc.screenSharing ? 'Stop sharing' : 'Share screen'}</strong><small>Present a browser tab or screen.</small></button>
+              <button type="button" className={whiteboardActive ? 'is-selected' : ''} disabled={!rtc.joined || !join.whiteboard} onClick={() => void toggleWhiteboard()}><span><PenLine /></span><strong>{whiteboardActive ? 'Show cameras' : 'Whiteboard'}</strong><small>Switch the class presentation mode.</small></button>
+              <button type="button" onClick={() => { setDetailsOpen(true); setMoreOpen(false) }}><span><Users /></span><strong>People & chat</strong><small>View attendees, moderation and messages.</small></button>
+              <button type="button" disabled={Boolean(moderationPending)} onClick={() => void moderate('mute-all').catch(() => undefined)}><span><MicOff /></span><strong>{moderationPending === 'mute-all' ? 'Muting…' : 'Mute class'}</strong><small>Turn off all student microphones.</small></button>
+              <button type="button" disabled={Boolean(moderationPending)} onClick={() => void moderate('camera-off-all').catch(() => undefined)}><span><CameraOff /></span><strong>{moderationPending === 'camera-off-all' ? 'Turning off…' : 'Cameras off'}</strong><small>Turn off all student cameras.</small></button>
+              {recording?.status === 'recording' ? (
+                <button type="button" className="is-danger" onClick={() => void stopRecord()}><span><CircleStop /></span><strong>Stop recording</strong><small>Finish the current recording.</small></button>
+              ) : (
+                <>
+                  <button type="button" onClick={() => void record('web')}><span><Video /></span><strong>Record class</strong><small>Capture the full classroom page.</small></button>
+                  <button type="button" onClick={() => void record('audio')}><span><Mic /></span><strong>Record audio</strong><small>Capture class audio only.</small></button>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
@@ -633,7 +666,7 @@ function LocalVideo({
     return () => track?.stop()
   }, [track, cameraOn, screenSharing])
   return (
-    <div className="lc-video" ref={containerRef}>
+    <div className="lc-video lc-video--local" ref={containerRef}>
       <div ref={ref} className="lc-video-canvas">
         {(!cameraOn || screenSharing) && <CameraOff />}
       </div>
@@ -842,7 +875,6 @@ function ParticipantActionMenu({
 }
 function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessage[] }) {
   const [body, setBody] = useState('')
-  const reactionPickerRef = useRef<HTMLDetailsElement>(null)
   const send = async (kind: 'chat' | 'reaction', value: string) => {
     if (!value.trim()) return
     await api(`/api/live/live-sessions/${sessionId}/messages`, {
@@ -863,24 +895,6 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
           </p>
         ))}
       </div>
-      <details className="lc-reaction-picker" ref={reactionPickerRef}>
-        <summary><SmilePlus /> Reaction</summary>
-        <div className="lc-reaction-popover" aria-label="Choose a reaction">
-          {['👍', '👏', '❤️', '🎉', '😂', '🤔', '🔥', '🙌'].map((emoji) => (
-            <button
-              type="button"
-              key={emoji}
-              aria-label={`React with ${emoji}`}
-              onClick={() => {
-                reactionPickerRef.current?.removeAttribute('open')
-                void send('reaction', emoji)
-              }}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      </details>
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -897,6 +911,25 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
         </button>
       </form>
     </section>
+  )
+}
+
+function ReactionTray({
+  onSelect,
+  onClose,
+}: {
+  onSelect: (value: string) => Promise<void>
+  onClose: () => void
+}) {
+  return (
+    <div className="lc-dock-reactions" role="dialog" aria-label="Choose a reaction">
+      {['👍', '👏', '❤️', '🎉', '😂', '🤔', '🔥', '🙌'].map((emoji) => (
+        <button type="button" key={emoji} aria-label={`React with ${emoji}`} onClick={() => void onSelect(emoji)}>
+          {emoji}
+        </button>
+      ))}
+      <button type="button" className="lc-reactions-close" aria-label="Close reactions" onClick={onClose}><X /></button>
+    </div>
   )
 }
 
