@@ -44,7 +44,7 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
           </p>
         </div>
         <Badge tone={active ? 'violet' : 'blue'}>
-          {active ? `${active} active or scheduled` : 'No active classes'}
+          {active ? `${active} active or scheduled` : 'No active or scheduled classes'}
         </Badge>
       </header>
       <div className="ad-overview-split">
@@ -207,7 +207,7 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
               label="Date and time"
               hint="Optional. You can create a class before setting a date."
             >
-              <Input name="scheduledAt" type="datetime-local" />
+              <Input className="ad-live-date-picker" name="scheduledAt" type="datetime-local" />
             </Field>
             <Field label="Call length" required>
               <CustomDropdown<string>

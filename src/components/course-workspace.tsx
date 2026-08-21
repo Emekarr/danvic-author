@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import type { Attachment, Course, CourseAggregate, CourseParticipant } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, CustomDropdown, Field, Input } from '@danvic/ui'
-import { ArrowRight, CreditCard, Download, ExternalLink, FileText, Layers3, Pencil, Radio, Unlock, X } from 'lucide-react'
+import { ArrowRight, CreditCard, Download, ExternalLink, FileText, Layers3, MoreHorizontal, Pencil, Radio, Unlock, X } from 'lucide-react'
 import styles from './course-workspace.module.css'
 import { courseStudioHref } from '@/lib/course-route'
 
@@ -36,6 +36,7 @@ export function CourseWorkspace({
   const [materials, setMaterials] = useState<Attachment[]>([])
   const [materialsLoading, setMaterialsLoading] = useState(false)
   const [materialsError, setMaterialsError] = useState('')
+  const [menuCourseId, setMenuCourseId] = useState<string | null>(null)
   const openEdit = (course: Course) => {
     setCurrent(course)
     setEditType(course.type)
@@ -128,13 +129,13 @@ export function CourseWorkspace({
                       <button
                         className="ad-enrolled-button ad-course-enrollment"
                         type="button"
+                        aria-label={`View ${count} enrolled ${count === 1 ? 'learner' : 'learners'}`}
                         onClick={() => {
                           setCurrent(course)
                           enrolledRef.current?.showModal()
                         }}
                       >
-                        <strong>{count}</strong>
-                        <span>{count === 1 ? 'learner enrolled' : 'learners enrolled'}</span>
+                        {count}
                       </button>
                     </td>
                     <td>
@@ -164,6 +165,51 @@ export function CourseWorkspace({
                             <span>Open studio</span> <ArrowRight aria-hidden="true" />
                           </Link>
                         ) : null}
+                      </div>
+                      <div className="ad-course-mobile-actions">
+                        {course.type === 'live' ? (
+                          <Link
+                            className="ad-course-live-button"
+                            href={courseStudioHref(course.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Live class
+                          </Link>
+                        ) : null}
+                        <div className="ad-course-more">
+                          <button
+                            type="button"
+                            className="ad-course-more-trigger"
+                            aria-label={`More actions for ${course.name}`}
+                            aria-expanded={menuCourseId === course.id}
+                            onClick={() => setMenuCourseId((id) => (id === course.id ? null : course.id))}
+                          >
+                            <MoreHorizontal aria-hidden="true" />
+                          </button>
+                          {menuCourseId === course.id ? (
+                            <div className="ad-course-more-menu">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuCourseId(null)
+                                  void openMaterials(course)
+                                }}
+                              >
+                                <FileText aria-hidden="true" /> Materials
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuCourseId(null)
+                                  openEdit(course)
+                                }}
+                              >
+                                <Pencil aria-hidden="true" /> Edit
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </td>
                   </tr>
