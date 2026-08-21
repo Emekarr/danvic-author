@@ -82,18 +82,13 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
       content: module.content,
     })),
   )
-  const [removedModuleIds, setRemovedModuleIds] = useState<string[]>([])
   const [attachments, setAttachments] = useState<Attachment[]>(aggregate.attachments)
-  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([])
   const [newFiles, setNewFiles] = useState<NewFileRow[]>([])
   const [invalidModuleIndexes, setInvalidModuleIndexes] = useState<number[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const keptAttachments = attachments.filter(
-    (attachment) => !removedAttachmentIds.includes(attachment.id),
-  )
-  const totalAttachments = keptAttachments.length + newFiles.length
+  const totalAttachments = attachments.length + newFiles.length
   const addNewFiles = (files: File[], moduleKey: string | null) =>
     setNewFiles((items) => {
       if (totalAttachments + files.length > 10) {
@@ -106,8 +101,6 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
   const removeModule = (index: number) => {
     const entry = modules[index]
     if (!entry) return
-    const moduleId = entry.id
-    if (moduleId) setRemovedModuleIds((ids) => [...ids, moduleId])
     setAttachments((items) => items.filter((item) => item.moduleId !== entry.id))
     setNewFiles((items) => items.filter((item) => item.moduleKey !== entry.key))
     setModules((items) => items.filter((_, itemIndex) => itemIndex !== index))
@@ -131,15 +124,25 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
             return
           }
           setInvalidModuleIndexes([])
-          if (keptAttachments.length + newFiles.length > 10) {
+          if (attachments.length + newFiles.length > 10) {
             setError('A course can have at most 10 attachments')
             return
           }
           setBusy(true)
           setError('')
           try {
+            const uploadedAttachments = []
+            for (const row of newFiles) {
+              uploadedAttachments.push({
+                attachmentPath: await upload(row.file),
+                fileName: row.file.name,
+                moduleIndex: row.moduleKey
+                  ? modules.findIndex((item) => item.key === row.moduleKey)
+                  : null,
+              })
+            }
             await apiFetch(`/api/courses/${encodeURIComponent(course.id)}`, {
-              method: 'PATCH',
+              method: 'PUT',
               body: JSON.stringify({
                 name,
                 durationMinutes,
@@ -152,57 +155,20 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
                   scheduleDate && scheduleTime
                     ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
                     : null,
+                modules: modules.map((module) => ({
+                  ...(module.id ? { id: module.id } : {}),
+                  title: module.title,
+                  content: module.content,
+                })),
+                attachments: [
+                  ...attachments.map((attachment) => ({
+                    id: attachment.id,
+                    moduleId: attachment.moduleId,
+                  })),
+                  ...uploadedAttachments,
+                ],
               }),
             })
-            for (const attachmentId of removedAttachmentIds)
-              await apiFetch(
-                `/api/courses/${encodeURIComponent(course.id)}/attachments/${encodeURIComponent(attachmentId)}`,
-                { method: 'DELETE' },
-              )
-            for (const moduleId of removedModuleIds)
-              await apiFetch(
-                `/api/courses/${encodeURIComponent(course.id)}/modules/${encodeURIComponent(moduleId)}`,
-                { method: 'DELETE' },
-              )
-            const idsByModuleKey = new Map<string, string>()
-            for (const entry of modules) {
-              if (entry.id) {
-                const original = aggregate.modules.find((item) => item.id === entry.id)
-                if (
-                  !original ||
-                  original.title !== entry.title.trim() ||
-                  original.content.trim() !== entry.content.trim()
-                ) {
-                  await apiFetch(
-                    `/api/courses/${encodeURIComponent(course.id)}/modules/${encodeURIComponent(entry.id)}`,
-                    {
-                      method: 'PATCH',
-                      body: JSON.stringify({ title: entry.title, content: entry.content }),
-                    },
-                  )
-                }
-                idsByModuleKey.set(entry.key, entry.id)
-              } else {
-                const created = await apiFetch<{
-                  module: { id: string }
-                }>(`/api/courses/${encodeURIComponent(course.id)}/modules`, {
-                  method: 'POST',
-                  body: JSON.stringify({ title: entry.title, content: entry.content }),
-                })
-                idsByModuleKey.set(entry.key, created.module.id)
-              }
-            }
-            for (const row of newFiles) {
-              const attachmentPath = await upload(row.file)
-              await apiFetch(`/api/courses/${encodeURIComponent(course.id)}/attachments`, {
-                method: 'POST',
-                body: JSON.stringify({
-                  attachmentPath,
-                  fileName: row.file.name,
-                  moduleId: row.moduleKey ? (idsByModuleKey.get(row.moduleKey) ?? null) : null,
-                }),
-              })
-            }
             router.push('/courses')
             router.refresh()
           } catch (cause) {
@@ -360,7 +326,7 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
           </div>
           <div className="sb-list">
             {modules.map((entry, index) => {
-              const moduleExisting = keptAttachments.filter(
+              const moduleExisting = attachments.filter(
                 (attachment) => attachment.moduleId === entry.id,
               )
               const moduleNew = newFiles.filter((row) => row.moduleKey === entry.key)
@@ -425,7 +391,7 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
                               variant="ghost"
                               aria-label={`Remove ${attachment.fileName ?? 'attachment'}`}
                               onClick={() =>
-                                setRemovedAttachmentIds((ids) => [...ids, attachment.id])
+                                setAttachments((items) => items.filter((item) => item.id !== attachment.id))
                               }
                             >
                               <Trash2 aria-hidden="true" />
@@ -490,10 +456,10 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
               <p>Course-level files. Remove existing ones or upload replacements.</p>
             </div>
           </div>
-          {keptAttachments.filter((attachment) => attachment.moduleId === null).length ||
+          {attachments.filter((attachment) => attachment.moduleId === null).length ||
           newFiles.filter((row) => row.moduleKey === null).length ? (
             <div className="ad-attachment-list">
-              {keptAttachments
+              {attachments
                 .filter((attachment) => attachment.moduleId === null)
                 .map((attachment) => (
                   <div className="ad-attachment-item" key={attachment.id}>
@@ -511,7 +477,7 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
                       size="icon"
                       variant="ghost"
                       aria-label={`Remove ${attachment.fileName ?? 'attachment'}`}
-                      onClick={() => setRemovedAttachmentIds((ids) => [...ids, attachment.id])}
+                      onClick={() => setAttachments((items) => items.filter((item) => item.id !== attachment.id))}
                     >
                       <Trash2 aria-hidden="true" />
                     </Button>
