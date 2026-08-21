@@ -2351,6 +2351,17 @@
   background: var(--sb-primary-soft);
 }
 
+.ad-module-editor-focus:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+.ad-module-editor-import {
+  border-color: #c9d8f3;
+  color: #184b9b;
+  background: #f7faff;
+}
+
 .ad-module-editor-focus svg {
   width: 14px;
   height: 14px;
@@ -2362,16 +2373,144 @@
   gap: 7px;
 }
 
+.ad-module-import-dialog {
+  width: min(440px, calc(100vw - 28px));
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e3e8f0;
+  border-radius: 20px;
+  color: #172033;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+}
+
+.ad-module-import-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.48);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.ad-module-import-dialog[open] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 24px;
+  animation: ad-module-import-in 180ms ease-out;
+}
+
+@keyframes ad-module-import-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ad-module-import-warning-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  color: #b45309;
+  background: #fff7ed;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+}
+
+.ad-module-import-warning-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ad-module-import-warning-copy span {
+  display: block;
+  margin-bottom: 4px;
+  color: #b45309;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.ad-module-import-warning-copy h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.ad-module-import-warning-copy p {
+  margin: 9px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ad-module-import-warning-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 9px;
+  padding-top: 6px;
+}
+
+.ad-module-import-warning-actions button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid #d8dee8;
+  border-radius: 9px;
+  color: #475569;
+  background: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ad-module-import-warning-actions button:hover {
+  border-color: #aeb8c8;
+  background: #f8fafc;
+}
+
+.ad-module-import-warning-actions button[data-primary] {
+  border-color: #1d4ed8;
+  color: #fff;
+  background: #1d4ed8;
+}
+
+.ad-module-import-warning-actions button[data-primary]:hover {
+  border-color: #1e40af;
+  background: #1e40af;
+}
+
+.ad-module-import-warning-actions button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.2);
+  outline-offset: 2px;
+}
+
+.ad-spin {
+  animation: ad-module-spin 850ms linear infinite;
+}
+
+@keyframes ad-module-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .ad-module-editor-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 5px;
   min-height: 45px;
-  overflow-x: auto;
   padding: 6px 9px;
   border-bottom: 1px solid var(--sb-border);
   background: #fff;
-  scrollbar-width: thin;
 }
 
 .ad-module-editor-tool-group {
@@ -2415,6 +2554,86 @@
 .ad-module-editor-tool svg {
   width: 15px;
   height: 15px;
+}
+
+.ad-module-editor-select {
+  height: 30px;
+  padding: 0 25px 0 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  outline: none;
+  color: #475569;
+  background-color: transparent;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ad-module-editor-select:hover,
+.ad-module-editor-select:focus-visible {
+  border-color: var(--sb-border);
+  color: var(--sb-primary-strong);
+  background-color: var(--sb-primary-soft);
+}
+
+.ad-module-editor-select--style {
+  width: 92px;
+}
+
+.ad-module-editor-select--font {
+  width: 112px;
+}
+
+.ad-module-editor-select--size {
+  width: 65px;
+}
+
+.ad-module-editor-select--spacing {
+  width: 92px;
+}
+
+.ad-module-editor-color {
+  position: relative;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--sb-muted);
+  cursor: pointer;
+}
+
+.ad-module-editor-color:hover,
+.ad-module-editor-color:focus-within {
+  color: var(--sb-primary-strong);
+  background: var(--sb-primary-soft);
+}
+
+.ad-module-editor-color svg {
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+
+.ad-module-editor-color input {
+  position: absolute;
+  right: 5px;
+  bottom: 2px;
+  width: 20px;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ad-module-editor-color input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.ad-module-editor-color input::-webkit-color-swatch {
+  border: 0;
+  border-radius: 999px;
 }
 
 .ad-module-editor-canvas {
@@ -2486,6 +2705,25 @@
   margin: 0 0 16px;
 }
 
+.ad-module-editor-page ul[data-type='taskList'] {
+  padding-left: 0;
+  list-style: none;
+}
+
+.ad-module-editor-page ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ad-module-editor-page ul[data-type='taskList'] li > label {
+  padding-top: 2px;
+}
+
+.ad-module-editor-page ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+
 .ad-module-editor-page blockquote {
   padding: 4px 0 4px 18px;
   border-left: 3px solid var(--sb-primary);
@@ -2544,6 +2782,24 @@
 
 .ad-module-editor-status {
   border-top: 1px solid var(--sb-border);
+}
+
+.ad-module-editor-status > span:first-child {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+.ad-module-editor-status > span:last-child {
+  flex: none;
+}
+
+.ad-module-editor-status [data-tone='success'] {
+  color: #047857;
+}
+
+.ad-module-editor-status [data-tone='error'] {
+  color: #b91c1c;
 }
 
 .ad-module-editor-loading {
@@ -2627,5 +2883,19 @@
 
   .ad-module-editor-status span:last-child {
     display: none;
+  }
+
+  .ad-module-import-dialog[open] {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .ad-module-import-warning-actions {
+    grid-column: auto;
+    flex-direction: column-reverse;
+  }
+
+  .ad-module-import-warning-actions button {
+    width: 100%;
   }
 }
