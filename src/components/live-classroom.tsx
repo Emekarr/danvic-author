@@ -20,9 +20,11 @@ import {
   type WhiteboardJoinConfig,
 } from '@danvic/api-client'
 import {
+  Ban as BanIcon,
   Camera,
   CameraOff,
   CircleStop,
+  EllipsisVertical,
   Hand,
   Maximize2,
   MessageCircle,
@@ -33,10 +35,27 @@ import {
   Radio,
   ScreenShareOff,
   PenLine,
+  ShieldCheck,
+  SmilePlus,
   UserRoundX,
   Users,
   Video,
 } from 'lucide-react'
+
+type ModerationAction =
+  | 'mute-all'
+  | 'camera-off-all'
+  | 'mute'
+  | 'camera-off'
+  | 'kick'
+  | 'ban'
+  | 'allow-publish'
+  | 'block-publish'
+
+type ModerateParticipant = (
+  action: ModerationAction,
+  participantId?: string,
+) => Promise<void>
 
 export function AuthorLiveClassroom({
   courseId,
@@ -186,6 +205,8 @@ function Classroom({
   onExpired: () => void
 }) {
   const rtc = useRtc(join, setError)
+  const [moderationPending, setModerationPending] = useState<ModerationAction | null>(null)
+  const moderationInFlightRef = useRef(false)
   const session = (state?.session ?? join.session) as LiveState['session'] & {
     whiteboardActive?: boolean
     whiteboardUsedAt?: string | null
@@ -225,12 +246,24 @@ function Classroom({
       window.removeEventListener('pageshow', restore)
     }
   }, [join.session.id])
-  const moderate = async (action: string, participantId?: string) => {
-    await api(`/api/live/live-sessions/${join.session.id}/moderate`, {
-      method: 'POST',
-      body: JSON.stringify({ action, participantId }),
-    })
-    await refresh()
+  const moderate: ModerateParticipant = async (action, participantId) => {
+    if (moderationInFlightRef.current) return
+    moderationInFlightRef.current = true
+    setModerationPending(action)
+    setError('')
+    try {
+      await api(`/api/live/live-sessions/${join.session.id}/moderate`, {
+        method: 'POST',
+        body: JSON.stringify({ action, participantId }),
+      })
+      await refresh()
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Could not update the class controls.')
+      throw value
+    } finally {
+      moderationInFlightRef.current = false
+      setModerationPending(null)
+    }
   }
   const toggle = async (field: 'microphoneOn' | 'cameraOn' | 'screenSharing') => {
     const enabled = !rtc[field]
@@ -280,46 +313,59 @@ function Classroom({
   }
   return (
     <main className="lc-shell">
-      <header className="lc-top">
-        <div>
-          <span className="lc-live-dot" /> Live · Author broadcast
-        </div>
-        <span className="lc-time-remaining">
-          {join.session.expiresAt
-            ? `Ends in ${remainingLabel(join.session.expiresAt)}`
-            : 'Time limit active'}
-        </span>
-        {session.whiteboardUsedAt && (
-          <span className={`lc-mode-status${whiteboardActive ? ' is-active' : ''}`}>
-            {whiteboardActive ? 'Whiteboard active' : 'Whiteboard used'}
+      <header className="lc-top lc-top--studio">
+        <div className="lc-session-heading">
+          <span className="lc-live-pill"><span className="lc-live-dot" /> Live</span>
+          <span>
+            <strong>Author studio</strong>
           </span>
-        )}
+        </div>
+        <div className="lc-session-meta">
+          <span className="lc-time-remaining">
+            {join.session.expiresAt
+              ? `Ends in ${remainingLabel(join.session.expiresAt)}`
+              : 'Time limit active'}
+          </span>
+          {session.whiteboardUsedAt && (
+            <span className={`lc-mode-status${whiteboardActive ? ' is-active' : ''}`}>
+              {whiteboardActive ? 'Whiteboard active' : 'Whiteboard ready'}
+            </span>
+          )}
+        </div>
         <div className="lc-actions">
           <button
+            type="button"
             className="sb-button sb-button--secondary sb-button--sm"
-            onClick={() => moderate('mute-all')}
+            title="Mute every student currently publishing audio"
+            disabled={Boolean(moderationPending)}
+            onClick={() => void moderate('mute-all').catch(() => undefined)}
           >
-            <MicOff /> Mute all
+            <MicOff /> {moderationPending === 'mute-all' ? 'Muting…' : 'Mute class'}
           </button>
           <button
+            type="button"
             className="sb-button sb-button--secondary sb-button--sm"
-            onClick={() => moderate('camera-off-all')}
+            title="Turn off every student camera"
+            disabled={Boolean(moderationPending)}
+            onClick={() => void moderate('camera-off-all').catch(() => undefined)}
           >
-            <CameraOff /> Cameras off
+            <CameraOff /> {moderationPending === 'camera-off-all' ? 'Turning off…' : 'Cameras off'}
           </button>
           {recording?.status === 'recording' ? (
-            <button className="sb-button sb-button--danger sb-button--sm" onClick={stopRecord}>
+            <button type="button" className="sb-button sb-button--danger sb-button--sm" onClick={stopRecord}>
               <CircleStop /> Stop recording
             </button>
           ) : (
             <>
               <button
+                type="button"
                 className="sb-button sb-button--secondary sb-button--sm"
                 onClick={() => record('web')}
               >
                 <Video /> Record page
               </button>
               <button
+                type="button"
                 className="sb-button sb-button--secondary sb-button--sm"
                 onClick={() => record('audio')}
               >
@@ -327,12 +373,12 @@ function Classroom({
               </button>
             </>
           )}
-          <button className="sb-button sb-button--danger sb-button--sm" onClick={onEnd}>
+          <button type="button" className="sb-button sb-button--danger sb-button--sm" onClick={onEnd}>
             End class
           </button>
         </div>
       </header>
-      {error && <p className="lc-error">{error}</p>}
+      {error && <p className="lc-error" role="alert">{error}</p>}
       <div className="lc-layout">
         <section className={`lc-stage${whiteboardActive ? ' lc-stage--whiteboard' : ''}`}>
           {whiteboardActive && join.whiteboard ? (
@@ -352,24 +398,28 @@ function Classroom({
           )}
         </section>
         <aside className="lc-sidebar">
-          <ParticipantPanel participants={state?.participants ?? []} moderate={moderate} />
+          <ParticipantPanel
+            participants={state?.participants ?? []}
+            moderate={moderate}
+            moderationPending={moderationPending}
+          />
           <Chat sessionId={join.session.id} messages={state?.messages ?? []} />
         </aside>
       </div>
       <footer className="lc-controls">
-        <button disabled={!rtc.joined} onClick={() => toggle('microphoneOn')}>
+        <button type="button" className={rtc.microphoneOn ? 'is-active' : ''} disabled={!rtc.joined} onClick={() => toggle('microphoneOn')}>
           {rtc.microphoneOn ? <Mic /> : <MicOff />}
           <span>{rtc.microphoneOn ? 'Mute' : 'Unmute'}</span>
         </button>
-        <button disabled={!rtc.joined} onClick={() => toggle('cameraOn')}>
+        <button type="button" className={rtc.cameraOn ? 'is-active' : ''} disabled={!rtc.joined} onClick={() => toggle('cameraOn')}>
           {rtc.cameraOn ? <Camera /> : <CameraOff />}
-          <span>{rtc.cameraOn ? 'Camera off' : 'Camera on'}</span>
+          <span>{rtc.cameraOn ? 'Turn camera off' : 'Turn camera on'}</span>
         </button>
-        <button disabled={!rtc.joined} onClick={() => toggle('screenSharing')}>
+        <button type="button" className={rtc.screenSharing ? 'is-active' : ''} disabled={!rtc.joined} onClick={() => toggle('screenSharing')}>
           {rtc.screenSharing ? <ScreenShareOff /> : <MonitorUp />}
           <span>{rtc.screenSharing ? 'Stop share' : 'Share screen'}</span>
         </button>
-        <button disabled={!rtc.joined || !join.whiteboard} onClick={toggleWhiteboard}>
+        <button type="button" className={whiteboardActive ? 'is-active' : ''} disabled={!rtc.joined || !join.whiteboard} onClick={toggleWhiteboard}>
           <PenLine />
           <span>{whiteboardActive ? 'Show cameras' : 'Open whiteboard'}</span>
         </button>
@@ -504,7 +554,20 @@ function useRtc(join: LiveJoinConfig, onError: (value: string) => void) {
           await client.publish(screenTrack)
           screenTrack.on(
             'track-ended',
-            () => void set('screenSharing', false).catch(() => undefined),
+            () =>
+              void (async () => {
+                await set('screenSharing', false)
+                await api(`/api/live/live-sessions/${join.session.id}/me`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ screenSharing: false }),
+                })
+              })().catch((value: unknown) =>
+                onError(
+                  value instanceof Error
+                    ? value.message
+                    : 'Could not finish screen sharing cleanly.',
+                ),
+              ),
           )
         } catch (error) {
           if (cameraPausedForScreenRef.current && cameraTrack) {
@@ -639,57 +702,147 @@ function Whiteboard({ config, uid }: { config: WhiteboardJoinConfig; uid: string
 function ParticipantPanel({
   participants,
   moderate,
+  moderationPending,
 }: {
   participants: LiveParticipant[]
-  moderate: (action: string, participantId?: string) => Promise<void>
+  moderate: ModerateParticipant
+  moderationPending: ModerationAction | null
 }) {
+  const active = participants.filter((participant) => !participant.leftAt)
   return (
-    <section className="lc-panel">
-      <h3>
-        <Users /> Participants ({participants.filter((p) => !p.leftAt).length})
-      </h3>
+    <section className="lc-panel lc-participant-panel">
+      <div className="lc-panel-heading">
+        <h3><Users /> People</h3>
+        <span>{active.length} in class</span>
+      </div>
       <div className="lc-participants">
-        {participants
-          .filter((p) => !p.leftAt)
-          .map((p) => (
+        {active.length ? active.map((p) => (
             <div className="lc-person" key={p.id}>
-              <div>
-                <strong>{p.displayName}</strong>
-                <small>
-                  {p.actorType}
-                  {p.handRaised ? ' · ✋ hand raised' : ''}
-                </small>
+              <span className="lc-person-avatar" aria-hidden="true">{initials(p.displayName)}</span>
+              <div className="lc-person-copy">
+                <span className="lc-person-name">
+                  <strong>{p.displayName}</strong>
+                  {p.handRaised && <span className="lc-hand-raised"><Hand /> Hand raised</span>}
+                </span>
+                <small>{p.actorType === 'author' ? 'Tutor' : p.canPublish ? 'On stage' : 'Attendee'}</small>
+              </div>
+              <div className="lc-person-media" aria-label="Media status">
+                {p.microphoneOn ? <Mic aria-label="Microphone on" /> : <MicOff aria-label="Microphone off" />}
+                {p.cameraOn ? <Camera aria-label="Camera on" /> : <CameraOff aria-label="Camera off" />}
               </div>
               {p.actorType === 'student' && (
-                <div className="lc-person-actions">
-                  <button title="Mute" onClick={() => moderate('mute', p.id)}>
-                    <MicOff />
-                  </button>
-                  <button title="Turn camera off" onClick={() => moderate('camera-off', p.id)}>
-                    <CameraOff />
-                  </button>
-                  <button
-                    title={p.canPublish ? 'Return to audience' : 'Allow speaking'}
-                    onClick={() => moderate(p.canPublish ? 'block-publish' : 'allow-publish', p.id)}
-                  >
-                    <Hand />
-                  </button>
-                  <button title="Kick" onClick={() => moderate('kick', p.id)}>
-                    <UserRoundX />
-                  </button>
-                  <button title="Ban" onClick={() => moderate('ban', p.id)}>
-                    Ban
-                  </button>
-                </div>
+                <ParticipantActionMenu
+                  participant={p}
+                  moderate={moderate}
+                  disabled={Boolean(moderationPending)}
+                />
               )}
             </div>
-          ))}
+          )) : <p className="lc-panel-empty">No one else has joined yet.</p>}
       </div>
     </section>
   )
 }
+
+function ParticipantActionMenu({
+  participant,
+  moderate,
+  disabled,
+}: {
+  participant: LiveParticipant
+  moderate: ModerateParticipant
+  disabled: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [working, setWorking] = useState<ModerationAction | null>(null)
+  const [menuError, setMenuError] = useState('')
+  const menuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const dismiss = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', dismiss)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', dismiss)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [open])
+  const options: Array<{
+    action: ModerationAction
+    name: string
+    description: string
+    icon: typeof MicOff
+    danger?: boolean
+  }> = [
+    { action: 'mute', name: 'Mute microphone', description: 'Stops their current audio stream.', icon: MicOff },
+    { action: 'camera-off', name: 'Turn camera off', description: 'Stops their camera and screen share.', icon: CameraOff },
+    participant.canPublish
+      ? { action: 'block-publish', name: 'Move to audience', description: 'Removes permission to publish audio or video.', icon: ShieldCheck }
+      : { action: 'allow-publish', name: 'Invite to stage', description: 'Lets them turn on their microphone or camera.', icon: Hand },
+    { action: 'kick', name: 'Remove from class', description: 'Ends this attendance session.', icon: UserRoundX, danger: true },
+    { action: 'ban', name: 'Ban for 24 hours', description: 'Removes them and blocks re-entry for one day.', icon: BanIcon, danger: true },
+  ]
+  const run = async (option: (typeof options)[number]) => {
+    setWorking(option.action)
+    setMenuError('')
+    try {
+      await moderate(option.action, participant.id)
+      setOpen(false)
+    } catch (value) {
+      setMenuError(value instanceof Error ? value.message : 'This action could not be completed.')
+    } finally {
+      setWorking(null)
+    }
+  }
+  return (
+    <div className="lc-person-menu" ref={menuRef}>
+      <button
+        type="button"
+        className="lc-person-menu-trigger"
+        aria-label={`Manage ${participant.displayName}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <EllipsisVertical />
+      </button>
+      {open && (
+        <div className="lc-person-menu-popover" role="menu" aria-label={`Actions for ${participant.displayName}`}>
+          <div className="lc-person-menu-title">
+            <strong>Manage attendee</strong>
+            <span>Choose one action for {participant.displayName}.</span>
+          </div>
+          {menuError && <p className="lc-person-menu-error" role="alert">{menuError}</p>}
+          {options.map((option) => {
+            const Icon = option.icon
+            return (
+              <button
+                type="button"
+                role="menuitem"
+                className={option.danger ? 'is-danger' : ''}
+                disabled={disabled || Boolean(working)}
+                key={option.action}
+                onClick={() => void run(option)}
+              >
+                <span className="lc-person-menu-icon"><Icon /></span>
+                <span><strong>{working === option.action ? 'Applying…' : option.name}</strong><small>{option.description}</small></span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessage[] }) {
   const [body, setBody] = useState('')
+  const reactionPickerRef = useRef<HTMLDetailsElement>(null)
   const send = async (kind: 'chat' | 'reaction', value: string) => {
     if (!value.trim()) return
     await api(`/api/live/live-sessions/${sessionId}/messages`, {
@@ -710,13 +863,24 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
           </p>
         ))}
       </div>
-      <div className="lc-reactions">
-        {['👍', '👏', '❤️', '🎉'].map((emoji) => (
-          <button key={emoji} onClick={() => send('reaction', emoji)}>
-            {emoji}
-          </button>
-        ))}
-      </div>
+      <details className="lc-reaction-picker" ref={reactionPickerRef}>
+        <summary><SmilePlus /> Reaction</summary>
+        <div className="lc-reaction-popover" aria-label="Choose a reaction">
+          {['👍', '👏', '❤️', '🎉', '😂', '🤔', '🔥', '🙌'].map((emoji) => (
+            <button
+              type="button"
+              key={emoji}
+              aria-label={`React with ${emoji}`}
+              onClick={() => {
+                reactionPickerRef.current?.removeAttribute('open')
+                void send('reaction', emoji)
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </details>
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -728,7 +892,7 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
           onChange={(event) => setBody(event.target.value)}
           placeholder="Message the class"
         />
-        <button aria-label="Send">
+        <button type="submit" aria-label="Send message">
           <MessageCircle />
         </button>
       </form>
@@ -738,4 +902,13 @@ function Chat({ sessionId, messages }: { sessionId: string; messages: LiveMessag
 
 async function api<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   return apiFetch<T>(path, init)
+}
+
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'A'
 }

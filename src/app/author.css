@@ -1421,13 +1421,761 @@
   border-radius: 0;
 }
 
+/* Refined live studio interface. */
+.lc-shell {
+  --lc-ink: #172033;
+  --lc-muted: #667085;
+  --lc-line: #e5e9f0;
+  --lc-blue: #2f6fed;
+  --lc-blue-soft: #edf4ff;
+  min-height: min(100vh, 920px);
+  border: 1px solid var(--lc-line);
+  border-radius: 24px;
+  background: #f7f9fc;
+  box-shadow: 0 24px 70px rgba(29, 41, 57, 0.1);
+}
+
+.lc-top.lc-top--studio {
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto;
+  gap: 20px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.lc-session-heading,
+.lc-session-heading > span:last-child,
+.lc-session-meta,
+.lc-panel-heading,
+.lc-person-name,
+.lc-person-media {
+  display: flex;
+  align-items: center;
+}
+
+.lc-session-heading {
+  gap: 12px;
+}
+
+.lc-session-heading > span:last-child {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lc-session-heading strong {
+  color: var(--lc-ink);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.lc-session-heading small {
+  color: var(--lc-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lc-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  color: #b42318;
+  background: #fff5f4;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lc-live-pill .lc-live-dot {
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 3px #fee2e2;
+}
+
+.lc-session-meta {
+  justify-content: center;
+  gap: 8px;
+}
+
+.lc-time-remaining,
+.lc-mode-status {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  border-color: var(--lc-line);
+  background: #f8fafc;
+}
+
+.lc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.lc-actions .sb-button {
+  min-height: 38px;
+  border-radius: 10px;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.lc-actions .sb-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.lc-layout {
+  grid-template-columns: minmax(0, 1fr) 380px;
+  min-height: 650px;
+}
+
+.lc-stage {
+  min-width: 0;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(47, 111, 237, 0.08), transparent 34%),
+    #f4f7fb;
+}
+
+.lc-video-grid {
+  gap: 16px;
+}
+
+.lc-video {
+  min-height: 300px;
+  border-color: #263249;
+  border-radius: 20px;
+  background: #111827;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.16);
+}
+
+.lc-video > span {
+  left: 14px;
+  bottom: 14px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.lc-sidebar {
+  position: relative;
+  overflow: visible;
+  grid-template-rows: minmax(250px, auto) minmax(360px, 1fr);
+  border-left-color: var(--lc-line);
+  background: #fff;
+}
+
+.lc-panel {
+  padding: 18px;
+  border-bottom-color: var(--lc-line);
+}
+
+.lc-participant-panel {
+  position: relative;
+  overflow: visible;
+  z-index: 5;
+}
+
+.lc-panel-heading {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.lc-panel-heading h3 {
+  margin: 0;
+}
+
+.lc-panel-heading > span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #475467;
+  background: #f2f4f7;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lc-participants {
+  gap: 10px;
+}
+
+.lc-person {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  min-height: 60px;
+  padding: 10px;
+  border-color: var(--lc-line);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.03);
+}
+
+.lc-person-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #2458bd;
+  background: var(--lc-blue-soft);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.lc-person-copy {
+  min-width: 0;
+}
+
+.lc-person-name {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lc-person-name strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--lc-ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lc-person small {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.lc-hand-raised {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #b54708;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.lc-hand-raised svg {
+  width: 11px;
+  height: 11px;
+}
+
+.lc-person-media {
+  gap: 5px;
+  color: #98a2b3;
+}
+
+.lc-person-media svg {
+  width: 14px;
+  height: 14px;
+}
+
+.lc-person-menu {
+  position: relative;
+}
+
+.lc-person-menu-trigger {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--lc-line);
+  border-radius: 10px;
+  color: #475467;
+  background: #fff;
+  cursor: pointer;
+}
+
+.lc-person-menu-trigger:hover,
+.lc-person-menu-trigger[aria-expanded='true'] {
+  border-color: #a9c2f7;
+  color: var(--lc-blue);
+  background: var(--lc-blue-soft);
+}
+
+.lc-person-menu-trigger svg {
+  width: 18px;
+  height: 18px;
+}
+
+.lc-person-menu-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(312px, calc(100vw - 40px));
+  padding: 8px;
+  border: 1px solid var(--lc-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 20px 48px rgba(16, 24, 40, 0.18);
+}
+
+.lc-person-menu-title {
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px 10px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.lc-person-menu-title strong {
+  color: var(--lc-ink);
+  font-size: 12px;
+}
+
+.lc-person-menu-title span {
+  color: var(--lc-muted);
+  font-size: 10px;
+}
+
+.lc-person-menu-error {
+  margin: 7px 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: #b42318;
+  background: #fff1f0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.lc-person-menu-popover > button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--lc-ink);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lc-person-menu-popover > button:hover {
+  background: #f7f9fc;
+}
+
+.lc-person-menu-popover > button.is-danger {
+  color: #b42318;
+}
+
+.lc-person-menu-popover > button > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.lc-person-menu-popover button strong,
+.lc-person-menu-popover button small {
+  display: block;
+}
+
+.lc-person-menu-popover button strong {
+  font-size: 11px;
+}
+
+.lc-person-menu-popover button small {
+  color: var(--lc-muted);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.lc-person-menu-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: var(--lc-blue);
+  background: var(--lc-blue-soft);
+}
+
+.is-danger .lc-person-menu-icon {
+  color: #d92d20;
+  background: #fff1f0;
+}
+
+.lc-person-menu-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lc-panel-empty {
+  margin: 18px 0;
+  color: var(--lc-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.lc-chat {
+  position: relative;
+  z-index: 1;
+  background: #fbfcfe;
+}
+
+.lc-messages p {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.lc-reaction-picker {
+  position: relative;
+  width: max-content;
+  margin: 8px 0;
+}
+
+.lc-reaction-picker summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--lc-line);
+  border-radius: 9px;
+  color: #475467;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lc-reaction-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.lc-reaction-picker summary svg {
+  width: 15px;
+  height: 15px;
+}
+
+.lc-reaction-popover {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 38px);
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--lc-line);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(16, 24, 40, 0.16);
+}
+
+.lc-reaction-popover button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.lc-reaction-popover button:hover {
+  background: #f2f4f7;
+  transform: translateY(-1px);
+}
+
+.lc-chat input {
+  min-height: 42px;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.lc-chat form button {
+  width: 42px;
+  border-radius: 11px;
+}
+
+.lc-controls {
+  z-index: 20;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top-color: var(--lc-line);
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.lc-controls button {
+  min-width: 96px;
+  min-height: 52px;
+  border-color: var(--lc-line);
+  border-radius: 13px;
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.04);
+}
+
+.lc-controls button:hover {
+  border-color: #a9c2f7;
+  background: var(--lc-blue-soft);
+}
+
+.lc-controls button.is-active {
+  border-color: #d7e4ff;
+  color: #2458bd;
+  background: var(--lc-blue-soft);
+}
+
+.lc-controls button.is-active:hover {
+  color: #2458bd;
+}
+
+/* Flat treatment: hierarchy through spacing and type, not nested cards. */
+.lc-shell {
+  border: 0;
+  border-radius: 0;
+  background: #f8fafc;
+  box-shadow: none;
+}
+
+.lc-top.lc-top--studio {
+  min-height: 72px;
+  border-bottom-color: #edf0f4;
+  background: #fff;
+}
+
+.lc-session-heading > span:last-child {
+  justify-content: center;
+}
+
+.lc-live-pill {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.lc-time-remaining,
+.lc-mode-status {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.lc-actions .sb-button,
+.lc-actions .sb-button.sb-button--secondary {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.lc-actions .sb-button:hover,
+.lc-actions .sb-button.sb-button--secondary:hover {
+  border-color: transparent;
+  background: #f2f4f7;
+}
+
+.lc-actions .sb-button.sb-button--danger {
+  border-color: transparent;
+  color: #b42318;
+  background: transparent;
+}
+
+.lc-actions .sb-button.sb-button--danger:hover {
+  background: #fff1f0;
+}
+
+.lc-stage {
+  background: #f5f7fa;
+}
+
+.lc-video {
+  border: 0;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.lc-sidebar {
+  background: #fff;
+}
+
+.lc-panel {
+  border-bottom-color: #edf0f4;
+}
+
+.lc-panel-heading > span {
+  padding: 0;
+  background: transparent;
+}
+
+.lc-person {
+  min-height: 58px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid #f0f2f5;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.lc-person:last-child {
+  border-bottom: 0;
+}
+
+.lc-person-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.lc-person-menu-trigger {
+  border-color: transparent;
+  background: transparent;
+}
+
+.lc-person-menu-trigger:hover,
+.lc-person-menu-trigger[aria-expanded='true'] {
+  border-color: transparent;
+}
+
+.lc-person-menu-popover {
+  border-color: #edf0f4;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.12);
+}
+
+.lc-person-menu-icon {
+  background: transparent;
+}
+
+.is-danger .lc-person-menu-icon {
+  background: transparent;
+}
+
+.lc-chat {
+  background: #fff;
+}
+
+.lc-messages p {
+  padding: 6px 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.lc-reaction-picker summary {
+  padding-inline: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.lc-reaction-popover {
+  border-color: #edf0f4;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.12);
+}
+
+.lc-chat input {
+  border: 0;
+  border-bottom: 1px solid #d9dee7;
+  border-radius: 0;
+  background: transparent;
+}
+
+.lc-chat input:focus {
+  border-bottom-color: var(--lc-blue);
+  outline: 0;
+}
+
+.lc-chat form button {
+  border-radius: 50%;
+}
+
+.lc-controls {
+  border-top-color: #edf0f4;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.lc-controls button {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.lc-controls button:hover,
+.lc-controls button.is-active {
+  border-color: transparent;
+  background: var(--lc-blue-soft);
+}
+
 @media (max-width: 900px) {
-  .lc-top {
-    flex-wrap: wrap;
+  .lc-top.lc-top--studio {
+    grid-template-columns: minmax(180px, 1fr) auto;
+  }
+
+  .lc-session-meta {
+    justify-content: flex-end;
+  }
+
+  .lc-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .lc-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
   }
 
   .lc-stage--whiteboard .lc-whiteboard-canvas {
     height: max(460px, calc(100vh - 230px));
+  }
+}
+
+@media (max-width: 760px) {
+  .lc-shell {
+    border-inline: 0;
+    border-radius: 0;
+  }
+
+  .lc-top.lc-top--studio,
+  .lc-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lc-session-meta {
+    justify-content: flex-start;
+  }
+
+  .lc-actions {
+    grid-column: auto;
+  }
+
+  .lc-sidebar {
+    grid-template-rows: auto minmax(340px, 1fr);
+    border-top: 1px solid var(--lc-line);
+    border-left: 0;
+  }
+
+  .lc-controls {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .lc-person-menu-popover {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: 82px;
+    left: 12px;
+    width: auto;
   }
 }
 
