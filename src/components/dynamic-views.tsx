@@ -1,7 +1,7 @@
 'use client'
 
 import { notFound, useSearchParams } from 'next/navigation'
-import type { Course, LiveSession } from '@danvic/api-client'
+import type { CourseAggregate, LiveSession } from '@danvic/api-client'
 import { LiveClassroomLoader } from '@/components/live-classroom-loader'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { useResource } from '@/lib/data'
@@ -36,28 +36,32 @@ export function CourseRouteView() {
 }
 
 export function CourseLiveView({ courseId }: { courseId: string }) {
-  const courses = useResource<{ courses: Course[] }>('/api/courses')
+  const course = useResource<CourseAggregate>(`/api/courses/${encodeURIComponent(courseId)}`)
   const sessions = useResource<{ sessions: LiveSession[] }>('/api/live/live-sessions')
   const query = useSearchParams()
 
-  if (courses.loading || sessions.loading) return <LoadingPage />
-  if (courses.error || sessions.error)
-    return <ErrorPage message={courses.error || sessions.error} />
+  if (course.loading || sessions.loading) return <LoadingPage />
+  if (course.error || sessions.error) return <ErrorPage message={course.error || sessions.error} />
 
-  const course = courses.data?.courses.find((item) => item.id === courseId)
-  if (!course) return <ErrorPage message="This course was not found in your author workspace." />
-  if (course.type !== 'live')
+  const resolvedCourse = course.data?.course
+  if (!resolvedCourse)
+    return <ErrorPage message="This course was not found in your author workspace." />
+  if (resolvedCourse.type !== 'live')
     return <ErrorPage message="Only live courses can be opened in the course studio." />
 
   const sessionId = query.get('session')
   const session = sessionId
-    ? sessions.data?.sessions.find(
-        (item) => item.id === sessionId && item.courseId === course.id,
-      ) ?? null
+    ? (sessions.data?.sessions.find(
+        (item) => item.id === sessionId && item.courseId === resolvedCourse.id,
+      ) ?? null)
     : null
 
   return (
-    <LiveClassroomLoader courseId={course.id} courseName={course.name} initialSession={session} />
+    <LiveClassroomLoader
+      courseId={resolvedCourse.id}
+      courseName={resolvedCourse.name}
+      initialSession={session}
+    />
   )
 }
 

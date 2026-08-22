@@ -6,7 +6,7 @@ import type { Course, LiveSession } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, CustomDropdown, Field, FormMessage, Input } from '@danvic/ui'
 import { CalendarPlus, Video } from 'lucide-react'
-import { courseStudioHref } from '@/lib/course-route'
+import { courseStudioHref, standaloneLiveClassHref } from '@/lib/course-route'
 
 const durations = Array.from({ length: 30 }, (_, index) => (index + 1) * 10)
 const STANDALONE_CLASS = 'standalone'
@@ -124,7 +124,7 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
                             href={
                               session.courseId
                                 ? courseStudioHref(session.courseId, session.id)
-                                : `/live-classes/${session.id}`
+                                : standaloneLiveClassHref(session.id)
                             }
                           >
                             <Video aria-hidden="true" /> Open

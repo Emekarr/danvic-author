@@ -959,9 +959,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 84px;
-  padding: 12px 18px;
+  gap: 8px;
+  min-height: 74px;
+  padding: 9px 16px;
   overflow: visible;
   background: rgba(20, 23, 26, 0.96);
   border: 0;
@@ -976,14 +976,14 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  width: 76px;
-  height: 60px;
+  width: 68px;
+  height: 54px;
   min-width: 0;
   padding: 0 8px;
   color: var(--lc-text);
   background: #2c3035;
   border: 0;
-  border-radius: 19px;
+  border-radius: 17px;
   cursor: pointer;
   transition: transform 150ms ease, background 150ms ease;
 }
@@ -1000,8 +1000,8 @@
 }
 
 .lc-controls > button svg {
-  width: 21px;
-  height: 21px;
+  width: 19px;
+  height: 19px;
 }
 
 .lc-controls > button span {
@@ -1023,7 +1023,7 @@
 }
 
 .lc-controls > button.is-danger {
-  width: 92px;
+  width: 82px;
   color: white;
   background: var(--lc-danger);
 }
@@ -1438,24 +1438,24 @@
   }
 
   .lc-controls {
-    gap: 8px;
-    min-height: 88px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    gap: 7px;
+    min-height: 76px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     background: rgba(22, 25, 28, 0.98);
   }
 
   .lc-controls > button {
     flex: 1 1 0;
     width: auto;
-    max-width: 68px;
-    height: 58px;
+    max-width: 60px;
+    height: 50px;
     padding: 0;
-    border-radius: 18px;
+    border-radius: 16px;
   }
 
   .lc-controls > button svg {
-    width: 23px;
-    height: 23px;
+    width: 20px;
+    height: 20px;
   }
 
   .lc-controls > button > span {
@@ -1472,7 +1472,7 @@
   .lc-controls > button.is-danger {
     flex: 1.15 1 0;
     width: auto;
-    max-width: 78px;
+    max-width: 68px;
   }
 
   .lc-dock-reactions {
@@ -1583,8 +1583,8 @@
   }
 
   .lc-controls > button {
-    height: 54px;
-    border-radius: 17px;
+    height: 48px;
+    border-radius: 15px;
   }
 
   .lc-video--local {

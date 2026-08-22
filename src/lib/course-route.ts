@@ -3,3 +3,11 @@ export function courseStudioHref(courseId: string, sessionId?: string) {
   if (sessionId) params.set('session', sessionId)
   return `/course?${params.toString()}`
 }
+
+export function assessmentSubmissionsHref(assessmentId: string) {
+  return `/assessments?assessmentId=${encodeURIComponent(assessmentId)}`
+}
+
+export function standaloneLiveClassHref(sessionId: string) {
+  return `/live-classes?sessionId=${encodeURIComponent(sessionId)}`
+}

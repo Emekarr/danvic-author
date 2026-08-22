@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Badge } from '@danvic/ui'
 import { ArrowRight, FilePlus2 } from 'lucide-react'
 import type { Assessment, Course } from '@danvic/api-client'
+import { assessmentSubmissionsHref } from '@/lib/course-route'
 
 export function AssessmentsPage({
   assessments,
@@ -87,7 +88,7 @@ export function AssessmentsPage({
                       <td>
                         <Link
                           className="ad-row-action"
-                          href={`/assessments/${assessment.id}/submissions`}
+                          href={assessmentSubmissionsHref(assessment.id)}
                         >
                           View <ArrowRight aria-hidden="true" />
                         </Link>

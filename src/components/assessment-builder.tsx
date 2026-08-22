@@ -14,6 +14,7 @@ import {
   savePendingCourseDraft,
   type PendingCourseDraft,
 } from '@/lib/pending-course-draft'
+import { assessmentSubmissionsHref } from '@/lib/course-route'
 
 type OptionDraft = { id: string; label: string; correct: boolean }
 type QuestionDraft = {
@@ -75,10 +76,14 @@ export function AssessmentBuilder({
       .then((draft) => {
         if (!active) return
         setPendingCourse(draft)
-        if (!draft) setError('The pending course draft could not be found. Return to course creation and try again.')
+        if (!draft)
+          setError(
+            'The pending course draft could not be found. Return to course creation and try again.',
+          )
       })
       .catch((cause) => {
-        if (active) setError(cause instanceof Error ? cause.message : 'Could not load the course draft')
+        if (active)
+          setError(cause instanceof Error ? cause.message : 'Could not load the course draft')
       })
       .finally(() => {
         if (active) setPendingCourseLoading(false)
@@ -109,7 +114,9 @@ export function AssessmentBuilder({
           const data = new FormData(event.currentTarget)
           try {
             if (!allMcqsHaveOneCorrectAnswer)
-              throw new Error('Select exactly one correct answer for every multiple-choice question')
+              throw new Error(
+                'Select exactly one correct answer for every multiple-choice question',
+              )
             const preparedQuestions = []
             for (const question of questions) {
               preparedQuestions.push({
@@ -135,7 +142,9 @@ export function AssessmentBuilder({
             let assessmentCourseId = courseId
             if (createWithPendingCourse) {
               if (!pendingCourse) {
-                throw new Error('The pending course draft is unavailable. Return to course creation and try again.')
+                throw new Error(
+                  'The pending course draft is unavailable. Return to course creation and try again.',
+                )
               }
               if (pendingCourse.createdCourseId) {
                 assessmentCourseId = pendingCourse.createdCourseId
@@ -164,8 +173,7 @@ export function AssessmentBuilder({
               }),
             })
             if (createWithPendingCourse) await clearPendingCourseDraft()
-            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- static export: no prerendered payload exists for this route, so client-side routing shows not-found
-            window.location.assign(`/assessments/${result.id}/submissions`)
+            router.replace(assessmentSubmissionsHref(result.id))
           } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Assessment could not be created')
           } finally {
@@ -195,7 +203,9 @@ export function AssessmentBuilder({
                   <span>
                     <strong>Assessment for {pendingCourse.name}</strong>
                     <small>
-                      {pendingCourse.modules.length} module{pendingCourse.modules.length === 1 ? '' : 's'} · the course has not been created yet
+                      {pendingCourse.modules.length} module
+                      {pendingCourse.modules.length === 1 ? '' : 's'} · the course has not been
+                      created yet
                     </small>
                   </span>
                 </div>
@@ -370,7 +380,10 @@ export function AssessmentBuilder({
                         required
                       />
                     </Field>
-                    <Field label="Diagram/media" hint="Optional: JPEG, PNG, MP4, or MP3 up to 100 MiB.">
+                    <Field
+                      label="Diagram/media"
+                      hint="Optional: JPEG, PNG, MP4, or MP3 up to 100 MiB."
+                    >
                       <Input
                         type="file"
                         accept="image/jpeg,image/png,video/mp4,audio/mpeg"
@@ -386,7 +399,9 @@ export function AssessmentBuilder({
                     </Field>
                   </div>
                   {question.mediaFile ? (
-                    <div className={`as-media-note${attachmentIsTooLarge(question.mediaFile) ? ' is-invalid' : ''}`}>
+                    <div
+                      className={`as-media-note${attachmentIsTooLarge(question.mediaFile) ? ' is-invalid' : ''}`}
+                    >
                       {attachmentIsTooLarge(question.mediaFile) ? (
                         <CircleAlert aria-hidden="true" />
                       ) : (
@@ -527,7 +542,8 @@ export function AssessmentBuilder({
 }
 
 async function uploadAssessmentMedia(file: File): Promise<string> {
-  if (attachmentIsTooLarge(file)) throw new Error(`${file.name} is over 100 MiB and cannot be uploaded`)
+  if (attachmentIsTooLarge(file))
+    throw new Error(`${file.name} is over 100 MiB and cannot be uploaded`)
   const supported = ['image/jpeg', 'image/png', 'video/mp4', 'audio/mpeg']
   if (!supported.includes(file.type))
     throw new Error(`${file.name} must be a JPEG, PNG, MP4, or MP3 file`)
