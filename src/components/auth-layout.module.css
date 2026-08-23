@@ -23,7 +23,7 @@
 }
 
 .authLayout :global(.sb-login-form h2) {
-  color: #172033;
+  color: var(--danvic-navy);
   font-size: clamp(28px, 2.5vw, 34px);
   letter-spacing: -0.04em;
 }

@@ -1,0 +1,166 @@
+/* ==========================================================================
+   DANVIC PETROLEUM INTERNATIONAL — Official Brand Design System
+   Applied on top of @danvic/ui tokens. Loaded after vendor styles.
+   Reference: Brand Guideline (one-page summary).
+   ========================================================================== */
+
+:root {
+  /* --- Brand primitives ------------------------------------------------- */
+  --danvic-green: #0f7a3b; /* Primary Green — buttons, highlights, icons */
+  --danvic-green-strong: #0c6330; /* hover / pressed */
+  --danvic-green-soft: #e9f4ee; /* tints, active backgrounds */
+  --danvic-gold: #f4b400; /* Energy Yellow/Gold — accent bars, emphasis */
+  --danvic-gold-deep: #8f6400; /* gold for small text (AA on white) */
+  --danvic-gold-soft: #fdf3d7;
+  --danvic-navy: #0a2e57; /* Deep Navy — headers, strong backgrounds */
+  --danvic-navy-strong: #061f3c;
+  --danvic-charcoal: #333333; /* Charcoal — body text */
+
+  /* --- Token remap (@danvic/ui consumes these everywhere) --------------- */
+  --sb-primary: var(--danvic-green);
+  --sb-primary-strong: var(--danvic-green-strong);
+  --sb-primary-soft: var(--danvic-green-soft);
+  --sb-foreground: var(--danvic-charcoal);
+
+  /* --- Typography --------------------------------------------------------*/
+  --font-heading: var(--font-montserrat), 'Montserrat', 'Poppins', ui-sans-serif,
+    system-ui, sans-serif;
+  --font-body: var(--font-open-sans), 'Open Sans', 'Lato', ui-sans-serif,
+    system-ui, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+body {
+  font-family: var(--font-body);
+  color: var(--danvic-charcoal);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.sb-brand,
+.sb-page-header h1,
+.sb-hero h1,
+.sb-login-copy h1,
+.sb-login-form h2,
+.sb-workspace-label strong {
+  font-family: var(--font-heading);
+}
+
+::selection {
+  background: var(--danvic-green-soft);
+  color: var(--danvic-navy);
+}
+
+:focus-visible {
+  outline-color: rgba(15, 122, 59, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   Brand mark
+   -------------------------------------------------------------------------- */
+.sb-brand[data-light='true'] .sb-brand-mark::after {
+  background: var(--danvic-gold);
+  border-color: var(--danvic-navy);
+}
+
+/* --------------------------------------------------------------------------
+   Navigation / app chrome
+   -------------------------------------------------------------------------- */
+.sb-nav-link[aria-current='page'] {
+  color: var(--danvic-green-strong);
+}
+
+.sb-workspace-label {
+  border-bottom: 2px solid var(--danvic-gold);
+  padding-bottom: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+.sb-button--soft {
+  color: var(--danvic-green-strong);
+}
+.sb-button--soft:hover {
+  background: #d5e9dd;
+}
+
+/* --------------------------------------------------------------------------
+   Status chips / covers (previously indigo)
+   -------------------------------------------------------------------------- */
+.as-cover {
+  background: linear-gradient(145deg, var(--danvic-green-soft), #f8fafc);
+}
+
+.lc-status {
+  background: var(--danvic-green-soft);
+  color: var(--danvic-green-strong);
+}
+
+/* --------------------------------------------------------------------------
+   Strong block sections — Deep Navy solid backgrounds (guideline §3)
+   -------------------------------------------------------------------------- */
+.sb-login-panel,
+.sb-hero {
+  background: var(--danvic-navy);
+}
+.sb-login-panel::after {
+  border-color: rgba(244, 180, 0, 0.12);
+}
+.sb-login-copy .sb-page-eyebrow,
+.sb-hero-copy .sb-page-eyebrow {
+  color: var(--danvic-gold);
+}
+.sb-login-copy p:last-child,
+.sb-hero p,
+.sb-login-features {
+  color: #d7e3ef;
+}
+.sb-login-feature svg {
+  color: var(--danvic-gold);
+}
+
+/* Gold accent bar under hero headline (guideline: accent bars) */
+.sb-hero-copy h1::after {
+  content: '';
+  display: block;
+  width: 72px;
+  height: 5px;
+  margin-top: 26px;
+  border-radius: 999px;
+  background: var(--danvic-gold);
+}
+
+/* --------------------------------------------------------------------------
+   Shared design-pattern utilities for Danvic pages
+   -------------------------------------------------------------------------- */
+.danvic-accent-bar {
+  display: block;
+  width: 56px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--danvic-gold);
+}
+
+.danvic-section--navy {
+  background: var(--danvic-navy);
+  color: white;
+}
+.danvic-section--navy h1,
+.danvic-section--navy h2,
+.danvic-section--navy h3 {
+  color: white;
+}
+
+.danvic-emphasis-block {
+  border-left: 4px solid var(--danvic-gold);
+  background: var(--danvic-gold-soft);
+  border-radius: 0 var(--sb-radius-control) var(--sb-radius-control) 0;
+  padding: 14px 18px;
+}

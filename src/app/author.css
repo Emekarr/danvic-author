@@ -634,7 +634,7 @@
 }
 
 .sb-app-shell[data-kind='author'] .ad-email-chip-value:hover {
-  background: rgba(37, 99, 235, 0.13);
+  background: rgba(15, 122, 59, 0.13);
 }
 
 .sb-app-shell[data-kind='author'] .ad-email-chip-value svg {
@@ -656,7 +656,7 @@
 }
 
 .sb-app-shell[data-kind='author'] .ad-email-chip-remove:hover {
-  background: rgba(37, 99, 235, 0.16);
+  background: rgba(15, 122, 59, 0.16);
 }
 
 .sb-app-shell[data-kind='author'] .ad-email-chip-remove svg {
@@ -1378,9 +1378,9 @@
 }
 
 .lc-mode-status.is-active {
-  border-color: #93c5fd;
-  color: #1d4ed8;
-  background: #eff6ff;
+  border-color: rgba(15, 122, 59, 0.4);
+  color: var(--danvic-green-strong);
+  background: var(--danvic-green-soft);
 }
 
 .lc-stage--whiteboard .lc-whiteboard {
@@ -1426,8 +1426,8 @@
   --lc-ink: #172033;
   --lc-muted: #667085;
   --lc-line: #e5e9f0;
-  --lc-blue: #2f6fed;
-  --lc-blue-soft: #edf4ff;
+  --lc-blue: #0f7a3b;
+  --lc-blue-soft: #e9f4ee;
   min-height: min(100vh, 920px);
   border: 1px solid var(--lc-line);
   border-radius: 24px;

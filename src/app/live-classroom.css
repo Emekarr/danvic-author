@@ -8,8 +8,8 @@
   --lc-line: rgba(255, 255, 255, 0.1);
   --lc-text: #f7f8fa;
   --lc-muted: #a9b0ba;
-  --lc-accent: #bad9cd;
-  --lc-accent-ink: #17382f;
+  --lc-accent: #7ed09b;
+  --lc-accent-ink: #0a2e1c;
   --lc-danger: #e24b3f;
   position: fixed;
   isolation: isolate;
@@ -361,7 +361,7 @@
 }
 
 .lc-presence-state svg {
-  color: #17382f;
+  color: #0a2e1c;
   background: var(--lc-accent);
 }
 
