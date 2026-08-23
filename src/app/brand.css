@@ -62,11 +62,32 @@ h6,
 }
 
 /* --------------------------------------------------------------------------
-   Brand mark
+   Official logo — replaces the wordmark + geometric mark everywhere
    -------------------------------------------------------------------------- */
+.sb-brand-mark::before,
+.sb-brand-mark::after,
+.sb-brand[data-light='true'] .sb-brand-mark::before,
 .sb-brand[data-light='true'] .sb-brand-mark::after {
-  background: var(--danvic-gold);
-  border-color: var(--danvic-navy);
+  content: none;
+}
+
+.sb-brand > span:last-child {
+  display: none;
+}
+
+.sb-brand-mark {
+  width: 158px;
+  height: 56px;
+  background: url('/danvic-logo.png') left center / contain no-repeat;
+}
+
+/* On navy surfaces the full-colour logo sits on a white chip for legibility */
+.sb-brand[data-light='true'] {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: white;
 }
 
 /* --------------------------------------------------------------------------
@@ -76,9 +97,15 @@ h6,
   color: var(--danvic-green-strong);
 }
 
+/* Sidebar: logo instead of "DANVIC / role" text */
+.sb-workspace-label strong,
+.sb-workspace-label small {
+  display: none;
+}
 .sb-workspace-label {
   border-bottom: 2px solid var(--danvic-gold);
-  padding-bottom: 10px;
+  min-height: 62px;
+  background: url('/danvic-logo.png') left center / contain no-repeat;
 }
 
 /* --------------------------------------------------------------------------
@@ -135,6 +162,16 @@ h6,
   margin-top: 26px;
   border-radius: 999px;
   background: var(--danvic-gold);
+}
+
+/* Login pages: official logo centered above the form */
+.sb-login-form-wrap::before {
+  content: '';
+  display: block;
+  width: 168px;
+  height: 60px;
+  margin-bottom: 24px;
+  background: url('/danvic-logo.png') center / contain no-repeat;
 }
 
 /* --------------------------------------------------------------------------
