@@ -46,8 +46,6 @@ export function CourseLiveView({ courseId }: { courseId: string }) {
   const resolvedCourse = course.data?.course
   if (!resolvedCourse)
     return <ErrorPage message="This course was not found in your author workspace." />
-  if (resolvedCourse.type !== 'live')
-    return <ErrorPage message="Only live courses can be opened in the course studio." />
 
   const sessionId = query.get('session')
   const session = sessionId
