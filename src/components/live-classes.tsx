@@ -15,10 +15,9 @@ const labelDuration = (minutes: number) =>
     : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`
 
 export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions: LiveSession[] }) {
-  const liveCourses = courses.filter((course) => course.type === 'live')
   const [items, setItems] = useState(sessions)
-  const [courseId, setCourseId] = useState(liveCourses[0]?.id ?? '')
-  const selectedCourse = liveCourses.find((course) => course.id === courseId)
+  const [courseId, setCourseId] = useState(courses[0]?.id ?? '')
+  const selectedCourse = courses.find((course) => course.id === courseId)
   const [durationMinutes, setDurationMinutes] = useState(
     selectedCourse?.liveCallDurationMinutes ?? 60,
   )
@@ -154,9 +153,15 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
               setBusy(true)
               setError('')
               const data = new FormData(form)
+              const scheduledAt = String(data.get('scheduledAt') ?? '')
+              if (!scheduledAt) {
+                setError('Choose a date and time; every live class must have a start time.')
+                setBusy(false)
+                return
+              }
                 try {
                   if (!courseId) {
-                    setError('Choose a live course to attach this class to.')
+                    setError('Choose a course to attach this class to.')
                     return
                   }
                   const result = await apiFetch<{ session: LiveSession }>('/api/live/live-sessions', {
@@ -164,9 +169,7 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
                     body: JSON.stringify({
                       courseId,
                       durationMinutes,
-                      scheduledAt: data.get('scheduledAt')
-                        ? new Date(String(data.get('scheduledAt'))).toISOString()
-                        : null,
+                      scheduledAt: new Date(scheduledAt).toISOString(),
                     }),
                   })
                   setItems((current) => [result.session, ...current])
@@ -179,7 +182,7 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
             }}
           >
             <Field
-              label="Attach to live course"
+              label="Attach to course"
               hint="Required. Every live class belongs to a course; only enrolled learners can join."
             >
               <CustomDropdown<string>
@@ -187,20 +190,24 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
                 onChange={(next) => {
                   setCourseId(next)
                   setDurationMinutes(
-                    liveCourses.find((course) => course.id === next)?.liveCallDurationMinutes ?? 60,
+                    courses.find((course) => course.id === next)?.liveCallDurationMinutes ?? 60,
                   )
                 }}
-                options={liveCourses.map((course) => ({
+                options={courses.map((course) => ({
                   value: course.id,
                   label: course.name,
-                  description: `${course.liveCallDurationMinutes ?? 60}-minute class limit`,
+                  description:
+                    course.type === 'live'
+                      ? `Live course · ${course.liveCallDurationMinutes ?? 60}-minute default`
+                      : 'Premade course',
                   icon: <Video aria-hidden="true" />,
                 }))}
               />
             </Field>
             <Field
               label="Date and time"
-              hint="Optional. You can create a class before setting a date."
+              required
+              hint="Every live class must have a start time."
             >
               <Input className="ad-live-date-picker" name="scheduledAt" type="datetime-local" />
             </Field>
@@ -217,11 +224,11 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
                 }))}
               />
             </Field>
-            <Button busy={busy} disabled={!liveCourses.length || !courseId}>
+            <Button busy={busy} disabled={!courses.length || !courseId}>
               <CalendarPlus aria-hidden="true" /> Create live class
             </Button>
-            {!liveCourses.length ? (
-              <FormMessage>Create a live course first; every live class must be attached to one.</FormMessage>
+            {!courses.length ? (
+              <FormMessage>Create a course first; every live class must be attached to one.</FormMessage>
             ) : null}
             <FormMessage>{error}</FormMessage>
           </form>
