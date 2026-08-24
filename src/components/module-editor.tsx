@@ -13,6 +13,7 @@ import Highlight from '@tiptap/extension-highlight'
 import SubscriptExtension from '@tiptap/extension-subscript'
 import SuperscriptExtension from '@tiptap/extension-superscript'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { apiFetch } from '@danvic/api-client'
 import {
   AlignCenter,
   AlignJustify,
@@ -45,6 +46,7 @@ import {
   Underline,
   Undo2,
   Unlink,
+  Upload,
 } from 'lucide-react'
 import {
   moduleContentIsEmpty,
@@ -138,6 +140,39 @@ const LINE_HEIGHTS = [
 const colorInputValue = (value: string | undefined, fallback: string) =>
   value && /^#[\da-f]{6}$/iu.test(value) ? value : fallback
 
+type ImageSignedUpload = {
+  uploadUrl: string
+  attachmentPath: string
+  publicUrl?: string
+}
+
+const IMAGE_CONTENT_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/svg+xml',
+  'image/gif',
+  'image/webp',
+])
+const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024
+
+async function uploadImage(file: File): Promise<string> {
+  const signed = await apiFetch<ImageSignedUpload>('/api/uploads/sign', {
+    method: 'POST',
+    body: JSON.stringify({ fileName: file.name, contentType: file.type, sizeBytes: file.size }),
+  })
+  const response = await fetch(signed.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  })
+  if (!response.ok) throw new Error(`${file.name} could not be uploaded to course storage`)
+  if (!signed.publicUrl)
+    throw new Error(
+      `${file.name} was uploaded but image hosting is not configured (R2_PUBLIC_BASE_URL is missing).`,
+    )
+  return signed.publicUrl
+}
+
 type DocxConversionResult = {
   html: string
   imageCount: number
@@ -199,7 +234,9 @@ export function ModuleEditor({
     tone: 'neutral' | 'success' | 'error'
   }>({ message: '', tone: 'neutral' })
   const [importing, setImporting] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
   const importWarningRef = useRef<HTMLDialogElement>(null)
   const extensions = useMemo(
     () => [
@@ -292,9 +329,44 @@ export function ModuleEditor({
     }
     editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
   }
-  const insertImage = () => {
-    const src = window.prompt('Paste the HTTPS address of an image')?.trim()
-    if (src && /^https:\/\//iu.test(src)) editor.chain().focus().setImage({ src }).run()
+  const insertImageFromUrl = () => {
+    const raw = window.prompt('Paste the web address of an image')?.trim()
+    if (!raw) return
+    const src = /^[a-z][\d+.a-z-]*:/iu.test(raw) ? raw : `https://${raw}`
+    if (!/^https?:\/\//iu.test(src)) {
+      setImportStatus({ message: 'That does not look like a valid image address.', tone: 'error' })
+      return
+    }
+    editor.chain().focus().setImage({ src }).run()
+  }
+  const insertImageFile = async (file: File | undefined) => {
+    if (!file) return
+    setImportStatus({ message: '', tone: 'neutral' })
+    if (!IMAGE_CONTENT_TYPES.has(file.type)) {
+      setImportStatus({
+        message: 'Choose a JPG, PNG, SVG, GIF or WebP image.',
+        tone: 'error',
+      })
+      return
+    }
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setImportStatus({ message: 'That image is over the 10 MiB upload limit.', tone: 'error' })
+      return
+    }
+    setUploadingImage(true)
+    setImportStatus({ message: `Uploading ${file.name}…`, tone: 'neutral' })
+    try {
+      const src = await uploadImage(file)
+      editor.chain().focus().setImage({ src }).run()
+      setImportStatus({ message: `${file.name} added.`, tone: 'success' })
+    } catch (cause) {
+      setImportStatus({
+        message: cause instanceof Error ? cause.message : 'The image could not be uploaded.',
+        tone: 'error',
+      })
+    } finally {
+      setUploadingImage(false)
+    }
   }
   const importDocument = async (file: File | undefined) => {
     if (!file) return
@@ -413,6 +485,17 @@ export function ModuleEditor({
         tabIndex={-1}
         onChange={(event) => {
           void importDocument(event.target.files?.[0])
+          event.target.value = ''
+        }}
+      />
+      <input
+        ref={imageInputRef}
+        hidden
+        type="file"
+        accept="image/jpeg,image/png,image/svg+xml,image/gif,image/webp"
+        tabIndex={-1}
+        onChange={(event) => {
+          void insertImageFile(event.target.files?.[0])
           event.target.value = ''
         }}
       />
@@ -674,7 +757,14 @@ export function ModuleEditor({
           >
             <Unlink />
           </ToolbarButton>
-          <ToolbarButton label="Insert image from URL" onClick={insertImage}>
+          <ToolbarButton
+            label="Upload image from device"
+            disabled={uploadingImage || importing}
+            onClick={() => imageInputRef.current?.click()}
+          >
+            <Upload />
+          </ToolbarButton>
+          <ToolbarButton label="Insert image from URL" onClick={insertImageFromUrl}>
             <ImagePlus />
           </ToolbarButton>
           <ToolbarButton

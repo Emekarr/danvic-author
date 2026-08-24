@@ -9,7 +9,6 @@ import { CalendarPlus, Video } from 'lucide-react'
 import { courseStudioHref, standaloneLiveClassHref } from '@/lib/course-route'
 
 const durations = Array.from({ length: 30 }, (_, index) => (index + 1) * 10)
-const STANDALONE_CLASS = 'standalone'
 const labelDuration = (minutes: number) =>
   minutes < 60
     ? `${minutes} minutes`
@@ -18,7 +17,7 @@ const labelDuration = (minutes: number) =>
 export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions: LiveSession[] }) {
   const liveCourses = courses.filter((course) => course.type === 'live')
   const [items, setItems] = useState(sessions)
-  const [courseId, setCourseId] = useState(liveCourses[0]?.id ?? STANDALONE_CLASS)
+  const [courseId, setCourseId] = useState(liveCourses[0]?.id ?? '')
   const selectedCourse = liveCourses.find((course) => course.id === courseId)
   const [durationMinutes, setDurationMinutes] = useState(
     selectedCourse?.liveCallDurationMinutes ?? 60,
@@ -155,20 +154,24 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
               setBusy(true)
               setError('')
               const data = new FormData(form)
-              try {
-                const result = await apiFetch<{ session: LiveSession }>('/api/live/live-sessions', {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    courseId: courseId === STANDALONE_CLASS ? null : courseId,
-                    durationMinutes,
-                    scheduledAt: data.get('scheduledAt')
-                      ? new Date(String(data.get('scheduledAt'))).toISOString()
-                      : null,
-                  }),
-                })
-                setItems((current) => [result.session, ...current])
-                form.reset()
-              } catch (cause) {
+                try {
+                  if (!courseId) {
+                    setError('Choose a live course to attach this class to.')
+                    return
+                  }
+                  const result = await apiFetch<{ session: LiveSession }>('/api/live/live-sessions', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      courseId,
+                      durationMinutes,
+                      scheduledAt: data.get('scheduledAt')
+                        ? new Date(String(data.get('scheduledAt'))).toISOString()
+                        : null,
+                    }),
+                  })
+                  setItems((current) => [result.session, ...current])
+                  form.reset()
+                } catch (cause) {
                 setError(cause instanceof Error ? cause.message : 'Could not create the live class')
               } finally {
                 setBusy(false)
@@ -177,7 +180,7 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
           >
             <Field
               label="Attach to live course"
-              hint="Optional. Standalone classes are author-only."
+              hint="Required. Every live class belongs to a course; only enrolled learners can join."
             >
               <CustomDropdown<string>
                 value={courseId}
@@ -187,20 +190,12 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
                     liveCourses.find((course) => course.id === next)?.liveCallDurationMinutes ?? 60,
                   )
                 }}
-                options={[
-                  {
-                    value: STANDALONE_CLASS,
-                    label: 'Standalone class',
-                    description: 'Not available to course learners',
-                    icon: <Video aria-hidden="true" />,
-                  },
-                  ...liveCourses.map((course) => ({
-                    value: course.id,
-                    label: course.name,
-                    description: `${course.liveCallDurationMinutes ?? 60}-minute class limit`,
-                    icon: <Video aria-hidden="true" />,
-                  })),
-                ]}
+                options={liveCourses.map((course) => ({
+                  value: course.id,
+                  label: course.name,
+                  description: `${course.liveCallDurationMinutes ?? 60}-minute class limit`,
+                  icon: <Video aria-hidden="true" />,
+                }))}
               />
             </Field>
             <Field
@@ -222,9 +217,12 @@ export function LiveClasses({ courses, sessions }: { courses: Course[]; sessions
                 }))}
               />
             </Field>
-            <Button busy={busy}>
+            <Button busy={busy} disabled={!liveCourses.length || !courseId}>
               <CalendarPlus aria-hidden="true" /> Create live class
             </Button>
+            {!liveCourses.length ? (
+              <FormMessage>Create a live course first; every live class must be attached to one.</FormMessage>
+            ) : null}
             <FormMessage>{error}</FormMessage>
           </form>
         </section>
