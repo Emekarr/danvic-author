@@ -22,8 +22,9 @@ import {
   Bold,
   Code2,
   Columns3,
+  FileUp,
+  Globe,
   Highlighter,
-  ImagePlus,
   IndentDecrease,
   IndentIncrease,
   Italic,
@@ -46,7 +47,7 @@ import {
   Underline,
   Undo2,
   Unlink,
-  Upload,
+  ImageUp,
 } from 'lucide-react'
 import {
   moduleContentIsEmpty,
@@ -219,6 +220,17 @@ function sanitizeImportedHtml(html: string): string {
     }
     const href = element.getAttribute('href')
     if (href && !/^(https?:|mailto:)/iu.test(href)) element.removeAttribute('href')
+  })
+  document.body.querySelectorAll('img').forEach((image) => {
+    const parent = image.parentElement
+    if (!parent || !(parent instanceof HTMLParagraphElement)) return
+    if (!parent.textContent?.trim()) {
+      const fragment = document.createDocumentFragment()
+      while (parent.firstChild) fragment.appendChild(parent.firstChild)
+      parent.replaceWith(fragment)
+      return
+    }
+    parent.after(image)
   })
   return document.body.innerHTML
 }
@@ -567,6 +579,7 @@ export function ModuleEditor({
             onClick={requestWordImport}
           >
             {importing ? 'Importing…' : 'Import Word document'}
+            <FileUp aria-hidden="true" />
           </button>
           {documentId && !standalone ? (
             <button type="button" className="ad-module-editor-focus" onClick={openDocumentTab}>
@@ -879,10 +892,10 @@ export function ModuleEditor({
             disabled={uploadingImage || importing}
             onClick={() => imageInputRef.current?.click()}
           >
-            <Upload />
+            <ImageUp />
           </ToolbarButton>
           <ToolbarButton label="Insert image from URL" onClick={insertImageFromUrl}>
-            <ImagePlus />
+            <Globe />
           </ToolbarButton>
           <ToolbarButton
             label="Horizontal line"
