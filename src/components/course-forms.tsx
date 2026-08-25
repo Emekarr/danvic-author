@@ -28,7 +28,7 @@ import {
   type PendingCourseDraft,
   validatePendingCourseDraft,
 } from '@/lib/pending-course-draft'
-import { moduleContentIsEmpty } from '@/lib/module-content'
+import { moduleContentIsEmpty, moduleImageAttachmentPaths } from '@/lib/module-content'
 import { ModuleEditor } from '@/components/module-editor'
 import { AssessmentBuilder } from '@/components/assessment-builder'
 import { useWorkspace } from '@/lib/data'
@@ -148,7 +148,9 @@ export function CourseCreateForm() {
         if (draft.scheduledAt) {
           const date = new Date(draft.scheduledAt)
           const pad = (value: number) => String(value).padStart(2, '0')
-          setScheduleDate(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`)
+          setScheduleDate(
+            `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+          )
           setScheduleTime(`${pad(date.getHours())}:${pad(date.getMinutes())}`)
         }
         setModules(
@@ -198,9 +200,8 @@ export function CourseCreateForm() {
             <div>
               <h2>Final assessment</h2>
               <p>
-                Build the assessment learners must pass to complete{' '}
-                {name.trim() || 'this course'}. Submitting creates the course and its assessment
-                together.
+                Build the assessment learners must pass to complete {name.trim() || 'this course'}.
+                Submitting creates the course and its assessment together.
               </p>
             </div>
           </div>
@@ -822,13 +823,22 @@ export function AddCourseContentForm({
             const form = event.currentTarget
             const data = new FormData(form)
             try {
-              await apiFetch(
+              const result = await apiFetch<{ module: { id: string } }>(
                 `/api/courses/${encodeURIComponent(String(data.get('courseId')))}/modules`,
                 {
                   method: 'POST',
                   body: JSON.stringify({ title: data.get('title'), content: moduleContent }),
                 },
               )
+              for (const attachmentPath of moduleImageAttachmentPaths(moduleContent)) {
+                await apiFetch(
+                  `/api/courses/${encodeURIComponent(String(data.get('courseId')))}/attachments`,
+                  {
+                    method: 'POST',
+                    body: JSON.stringify({ attachmentPath, moduleId: result.module.id }),
+                  },
+                )
+              }
               setMessage('Module added to the course.')
               form.reset()
               setModuleCourseId('')

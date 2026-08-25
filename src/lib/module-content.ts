@@ -58,3 +58,21 @@ export function moduleContentIsEmpty(value: string): boolean {
     node.type === 'image' || (node.content ?? []).some(hasImage)
   return !moduleContentText(document) && !hasImage(document)
 }
+
+/** Returns private course-storage objects embedded in a rich-text module. */
+export function moduleImageAttachmentPaths(value: string): string[] {
+  const paths = new Set<string>()
+  const visit = (node: ModuleContentNode): void => {
+    if (
+      node.type === 'image' &&
+      typeof node.attrs?.attachmentPath === 'string' &&
+      /^courses\/[0-9A-HJKMNP-TV-Z]{26}\/[0-9A-HJKMNP-TV-Z]{26}\.(jpg|png|svg|gif|webp)$/u.test(
+        node.attrs.attachmentPath,
+      )
+    )
+      paths.add(node.attrs.attachmentPath)
+    for (const child of node.content ?? []) visit(child)
+  }
+  visit(parseModuleContent(value))
+  return [...paths]
+}

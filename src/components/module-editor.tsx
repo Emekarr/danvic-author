@@ -140,11 +140,7 @@ const LINE_HEIGHTS = [
 const colorInputValue = (value: string | undefined, fallback: string) =>
   value && /^#[\da-f]{6}$/iu.test(value) ? value : fallback
 
-type ImageSignedUpload = {
-  uploadUrl: string
-  attachmentPath: string
-  publicUrl?: string
-}
+type ImageSignedUpload = { uploadUrl: string; attachmentPath: string; viewUrl: string }
 
 const IMAGE_CONTENT_TYPES = new Set([
   'image/jpeg',
@@ -155,7 +151,9 @@ const IMAGE_CONTENT_TYPES = new Set([
 ])
 const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024
 
-async function uploadImage(file: File): Promise<string> {
+async function uploadImage(
+  file: File,
+): Promise<Pick<ImageSignedUpload, 'attachmentPath' | 'viewUrl'>> {
   const signed = await apiFetch<ImageSignedUpload>('/api/uploads/sign', {
     method: 'POST',
     body: JSON.stringify({ fileName: file.name, contentType: file.type, sizeBytes: file.size }),
@@ -166,11 +164,7 @@ async function uploadImage(file: File): Promise<string> {
     body: file,
   })
   if (!response.ok) throw new Error(`${file.name} could not be uploaded to course storage`)
-  if (!signed.publicUrl)
-    throw new Error(
-      `${file.name} was uploaded but image hosting is not configured (R2_PUBLIC_BASE_URL is missing).`,
-    )
-  return signed.publicUrl
+  return { attachmentPath: signed.attachmentPath, viewUrl: signed.viewUrl }
 }
 
 type DocxConversionResult = {
@@ -257,7 +251,21 @@ export function ModuleEditor({
       TaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: 'Start writing this module…' }),
-      Image.configure({ allowBase64: false, inline: false }),
+      Image.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            attachmentPath: {
+              default: null,
+              parseHTML: (element) => element.getAttribute('data-attachment-path'),
+              renderHTML: (attributes) =>
+                attributes.attachmentPath
+                  ? { 'data-attachment-path': attributes.attachmentPath as string }
+                  : {},
+            },
+          }
+        },
+      }).configure({ allowBase64: false, inline: false }),
       TableKit.configure({ table: { resizable: true } }),
     ],
     [],
@@ -283,6 +291,34 @@ export function ModuleEditor({
     if (current !== next)
       editor.commands.setContent(JSON.parse(next) as JSONContent, { emitUpdate: false })
   }, [editor, value])
+
+  useEffect(() => {
+    if (!editor) return
+    const refreshPrivateImageUrls = async () => {
+      const updates: Array<{ pos: number; attachmentPath: string }> = []
+      editor.state.doc.descendants((node, pos) => {
+        const attachmentPath = node.attrs.attachmentPath
+        if (node.type.name === 'image' && typeof attachmentPath === 'string')
+          updates.push({ pos, attachmentPath })
+      })
+      for (const { pos, attachmentPath } of updates) {
+        try {
+          const signed = await apiFetch<{ viewUrl: string }>('/api/uploads/view', {
+            method: 'POST',
+            body: JSON.stringify({ attachmentPath }),
+          })
+          const node = editor.state.doc.nodeAt(pos)
+          if (node?.type.name === 'image' && node.attrs.attachmentPath === attachmentPath)
+            editor.view.dispatch(
+              editor.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, src: signed.viewUrl }),
+            )
+        } catch {
+          // The learner-facing renderer still resolves an authorized URL after the course saves.
+        }
+      }
+    }
+    void refreshPrivateImageUrls()
+  }, [editor])
 
   useEffect(() => {
     if (!focusMode) return
@@ -356,8 +392,13 @@ export function ModuleEditor({
     setUploadingImage(true)
     setImportStatus({ message: `Uploading ${file.name}…`, tone: 'neutral' })
     try {
-      const src = await uploadImage(file)
-      editor.chain().focus().setImage({ src }).run()
+      const image = await uploadImage(file)
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: image.viewUrl })
+        .updateAttributes('image', { attachmentPath: image.attachmentPath })
+        .run()
       setImportStatus({ message: `${file.name} added.`, tone: 'success' })
     } catch (cause) {
       setImportStatus({
@@ -376,7 +417,10 @@ export function ModuleEditor({
       return
     }
     if (file.size > 20 * 1024 * 1024) {
-      setImportStatus({ message: 'That Word document is over the 20 MiB import limit.', tone: 'error' })
+      setImportStatus({
+        message: 'That Word document is over the 20 MiB import limit.',
+        tone: 'error',
+      })
       return
     }
     setImporting(true)
@@ -400,7 +444,8 @@ export function ModuleEditor({
       })
     } catch (cause) {
       setImportStatus({
-        message: cause instanceof Error ? cause.message : 'The Word document could not be imported.',
+        message:
+          cause instanceof Error ? cause.message : 'The Word document could not be imported.',
         tone: 'error',
       })
     } finally {
@@ -436,7 +481,8 @@ export function ModuleEditor({
     fontSize?: string
     lineHeight?: string
   }
-  const highlightColor = (editor.getAttributes('highlight').color as string | undefined) ?? '#fff59d'
+  const highlightColor =
+    (editor.getAttributes('highlight').color as string | undefined) ?? '#fff59d'
   const listItemType = editor.isActive('taskItem') ? 'taskItem' : 'listItem'
 
   return (
@@ -571,7 +617,9 @@ export function ModuleEditor({
             }}
           >
             {FONT_FAMILIES.map(([font, name]) => (
-              <option key={name} value={font}>{name}</option>
+              <option key={name} value={font}>
+                {name}
+              </option>
             ))}
           </select>
           <select
@@ -586,7 +634,9 @@ export function ModuleEditor({
             }}
           >
             {FONT_SIZES.map(([size, name]) => (
-              <option key={name} value={size}>{name}</option>
+              <option key={name} value={size}>
+                {name}
+              </option>
             ))}
           </select>
         </div>
@@ -728,7 +778,9 @@ export function ModuleEditor({
             }}
           >
             {LINE_HEIGHTS.map(([height, name]) => (
-              <option key={name} value={height}>{name}</option>
+              <option key={name} value={height}>
+                {name}
+              </option>
             ))}
           </select>
           {alignmentTools.map(([alignment, alignmentLabel, Icon]) => (

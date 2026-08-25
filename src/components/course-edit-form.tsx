@@ -18,7 +18,7 @@ import {
   UploadCloud,
 } from 'lucide-react'
 import { attachmentIsTooLarge } from '@/lib/pending-course-draft'
-import { moduleContentIsEmpty } from '@/lib/module-content'
+import { moduleContentIsEmpty, moduleImageAttachmentPaths } from '@/lib/module-content'
 import { ModuleEditor } from '@/components/module-editor'
 
 const COURSE_FILE_ACCEPT =
@@ -72,7 +72,9 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
       : '',
   )
   const [scheduleTime, setScheduleTime] = useState(
-    initialSchedule ? `${pad(initialSchedule.getHours())}:${pad(initialSchedule.getMinutes())}` : '',
+    initialSchedule
+      ? `${pad(initialSchedule.getHours())}:${pad(initialSchedule.getMinutes())}`
+      : '',
   )
   const [modules, setModules] = useState<ModuleRow[]>(() =>
     aggregate.modules.map((module) => ({
@@ -124,8 +126,17 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
             return
           }
           setInvalidModuleIndexes([])
-          if (attachments.length + newFiles.length > 10) {
-            setError('A course can have at most 10 attachments')
+          const knownPaths = new Set(attachments.map((attachment) => attachment.attachmentPath))
+          const embeddedAttachments = modules.flatMap((module, moduleIndex) =>
+            moduleImageAttachmentPaths(module.content)
+              .filter((attachmentPath) => !knownPaths.has(attachmentPath))
+              .map((attachmentPath) => {
+                knownPaths.add(attachmentPath)
+                return { attachmentPath, fileName: null, moduleIndex }
+              }),
+          )
+          if (attachments.length + newFiles.length + embeddedAttachments.length > 10) {
+            setError('A course can have at most 10 attachments, including images in module content')
             return
           }
           setBusy(true)
@@ -166,6 +177,7 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
                     moduleId: attachment.moduleId,
                   })),
                   ...uploadedAttachments,
+                  ...embeddedAttachments,
                 ],
               }),
             })
@@ -391,7 +403,9 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
                               variant="ghost"
                               aria-label={`Remove ${attachment.fileName ?? 'attachment'}`}
                               onClick={() =>
-                                setAttachments((items) => items.filter((item) => item.id !== attachment.id))
+                                setAttachments((items) =>
+                                  items.filter((item) => item.id !== attachment.id),
+                                )
                               }
                             >
                               <Trash2 aria-hidden="true" />
@@ -477,7 +491,9 @@ export function CourseEditForm({ aggregate }: { aggregate: CourseAggregate }) {
                       size="icon"
                       variant="ghost"
                       aria-label={`Remove ${attachment.fileName ?? 'attachment'}`}
-                      onClick={() => setAttachments((items) => items.filter((item) => item.id !== attachment.id))}
+                      onClick={() =>
+                        setAttachments((items) => items.filter((item) => item.id !== attachment.id))
+                      }
                     >
                       <Trash2 aria-hidden="true" />
                     </Button>

@@ -1,6 +1,7 @@
 'use client'
 
 import { apiFetch, type CourseAggregate, type SignedUpload } from '@danvic/api-client'
+import { moduleImageAttachmentPaths } from './module-content'
 
 export const MAX_COURSE_ATTACHMENT_BYTES = 100 * 1024 * 1024
 
@@ -55,7 +56,8 @@ const completeTransaction = (transaction: IDBTransaction) =>
   new Promise<void>((resolve, reject) => {
     transaction.oncomplete = () => resolve()
     transaction.onerror = () => reject(transaction.error ?? new Error('Could not save the draft'))
-    transaction.onabort = () => reject(transaction.error ?? new Error('Draft storage was interrupted'))
+    transaction.onabort = () =>
+      reject(transaction.error ?? new Error('Draft storage was interrupted'))
   })
 
 export async function savePendingCourseDraft(draft: PendingCourseDraft): Promise<void> {
@@ -99,15 +101,22 @@ export async function clearPendingCourseDraft(): Promise<void> {
 export const attachmentIsTooLarge = (file: File) => file.size > MAX_COURSE_ATTACHMENT_BYTES
 
 export function validatePendingCourseDraft(draft: PendingCourseDraft): void {
-  const moduleFiles = draft.modules.flatMap((module) => module.resources.map((resource) => resource.file))
+  const moduleFiles = draft.modules.flatMap((module) =>
+    module.resources.map((resource) => resource.file),
+  )
+  const embeddedImages = draft.modules.flatMap((module) =>
+    moduleImageAttachmentPaths(module.content),
+  )
   const allFiles = [...draft.files, ...moduleFiles]
-  if (allFiles.length > 10) throw new Error('A course can have at most 10 attachments')
+  if (allFiles.length + embeddedImages.length > 10)
+    throw new Error('A course can have at most 10 attachments, including images in module content')
   const oversized = allFiles.find(attachmentIsTooLarge)
   if (oversized) throw new Error(`${oversized.name} is over 100 MiB and cannot be uploaded`)
 }
 
 async function uploadCourseFile(file: File): Promise<string> {
-  if (attachmentIsTooLarge(file)) throw new Error(`${file.name} is over 100 MiB and cannot be uploaded`)
+  if (attachmentIsTooLarge(file))
+    throw new Error(`${file.name} is over 100 MiB and cannot be uploaded`)
   if (!file.type) throw new Error(`${file.name} does not have a supported content type`)
   const signed = await apiFetch<SignedUpload>('/api/uploads/sign', {
     method: 'POST',
@@ -124,7 +133,11 @@ async function uploadCourseFile(file: File): Promise<string> {
 
 export async function createCourseFromDraft(draft: PendingCourseDraft): Promise<CourseAggregate> {
   validatePendingCourseDraft(draft)
-  const attachments: Array<{ attachmentPath: string; fileName: string | null; moduleIndex?: number }> = []
+  const attachments: Array<{
+    attachmentPath: string
+    fileName: string | null
+    moduleIndex?: number
+  }> = []
   for (const file of draft.files) {
     attachments.push({ attachmentPath: await uploadCourseFile(file), fileName: file.name })
   }
@@ -135,6 +148,9 @@ export async function createCourseFromDraft(draft: PendingCourseDraft): Promise<
         fileName: resource.label.trim() || null,
         moduleIndex,
       })
+    }
+    for (const attachmentPath of moduleImageAttachmentPaths(module.content)) {
+      attachments.push({ attachmentPath, fileName: null, moduleIndex })
     }
   }
   return apiFetch<CourseAggregate>('/api/courses', {
