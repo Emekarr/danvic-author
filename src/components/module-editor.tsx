@@ -169,7 +169,6 @@ async function uploadImage(
 
 type DocxConversionResult = {
   html: string
-  imageCount: number
   warningCount: number
 }
 
@@ -200,10 +199,20 @@ function convertDocx(arrayBuffer: ArrayBuffer): Promise<DocxConversionResult> {
 function sanitizeImportedHtml(html: string): string {
   const document = new DOMParser().parseFromString(html, 'text/html')
   document
-    .querySelectorAll('script, style, iframe, object, embed, form, input, button, meta, link, img')
+    .querySelectorAll('script, style, iframe, object, embed, form, input, button, meta, link')
     .forEach((element) => element.remove())
   const permittedAttributes = new Set(['href', 'title', 'colspan', 'rowspan', 'start'])
   document.body.querySelectorAll('*').forEach((element) => {
+    if (element instanceof HTMLImageElement) {
+      const src = element.getAttribute('src') ?? ''
+      if (/^data:image\//iu.test(src)) {
+        for (const attribute of [...element.attributes])
+          if (attribute.name.toLowerCase() !== 'src') element.removeAttribute(attribute.name)
+        return
+      }
+      element.remove()
+      return
+    }
     for (const attribute of [...element.attributes]) {
       if (!permittedAttributes.has(attribute.name.toLowerCase()))
         element.removeAttribute(attribute.name)
@@ -212,6 +221,49 @@ function sanitizeImportedHtml(html: string): string {
     if (href && !/^(https?:|mailto:)/iu.test(href)) element.removeAttribute('href')
   })
   return document.body.innerHTML
+}
+
+const dataUrlToFile = (dataUrl: string, index: number): File | null => {
+  const match = /^data:(image\/[\d.+a-z-]+);base64,([\s\S]+)$/iu.exec(dataUrl)
+  if (!match) return null
+  try {
+    const binary = window.atob(match[2] ?? '')
+    const bytes = new Uint8Array(binary.length)
+    for (let position = 0; position < binary.length; position += 1)
+      bytes[position] = binary.charCodeAt(position)
+    const type = match[1] ?? 'image/png'
+    const extension = (type.split('/')[1] ?? 'png').replace(/[^a-z0-9]/giu, '') || 'png'
+    return new File([bytes], `word-import-${index + 1}.${extension}`, { type })
+  } catch {
+    return null
+  }
+}
+
+async function uploadImportedImages(
+  html: string,
+): Promise<{ html: string; uploaded: number; failed: number }> {
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  const images = [...document.body.querySelectorAll('img')]
+  let uploaded = 0
+  let failed = 0
+  for (const [index, image] of images.entries()) {
+    const file = dataUrlToFile(image.getAttribute('src') ?? '', index)
+    if (!file || file.size > MAX_IMAGE_UPLOAD_BYTES || !IMAGE_CONTENT_TYPES.has(file.type)) {
+      image.remove()
+      failed += 1
+      continue
+    }
+    try {
+      const stored = await uploadImage(file)
+      image.setAttribute('src', stored.viewUrl)
+      image.setAttribute('data-attachment-path', stored.attachmentPath)
+      uploaded += 1
+    } catch {
+      image.remove()
+      failed += 1
+    }
+  }
+  return { html: document.body.innerHTML, uploaded, failed }
 }
 
 export function ModuleEditor({
@@ -427,20 +479,33 @@ export function ModuleEditor({
     setImportStatus({ message: `Importing ${file.name}…`, tone: 'neutral' })
     try {
       const result = await convertDocx(await file.arrayBuffer())
+      const embeddedImageCount = new DOMParser()
+        .parseFromString(result.html, 'text/html')
+        .body.querySelectorAll('img').length
       const safeHtml = sanitizeImportedHtml(result.html)
       const text = new DOMParser().parseFromString(safeHtml, 'text/html').body.textContent?.trim()
-      if (!text) throw new Error('This Word document does not contain importable text.')
-      editor.commands.setContent(safeHtml, { emitUpdate: true })
+      if (!text && !embeddedImageCount)
+        throw new Error('This Word document does not contain importable text or images.')
+      if (embeddedImageCount)
+        setImportStatus({
+          message: `Uploading ${embeddedImageCount} embedded image${embeddedImageCount === 1 ? '' : 's'}…`,
+          tone: 'neutral',
+        })
+      const { html: finalHtml, uploaded, failed } = await uploadImportedImages(safeHtml)
+      editor.commands.setContent(finalHtml, { emitUpdate: true })
       editor.commands.focus('start')
       const notes = [
-        result.imageCount
-          ? `${result.imageCount} embedded image${result.imageCount === 1 ? ' was' : 's were'} skipped; add ${result.imageCount === 1 ? 'it' : 'them'} separately.`
+        uploaded
+          ? `${uploaded} embedded image${uploaded === 1 ? ' was' : 's were'} added to the module.`
+          : '',
+        failed
+          ? `${failed} image${failed === 1 ? ' was' : 's were'} skipped; add ${failed === 1 ? 'it' : 'them'} separately.`
           : '',
         result.warningCount ? 'Review the imported formatting before saving.' : '',
       ].filter(Boolean)
       setImportStatus({
         message: `${file.name} imported${notes.length ? `. ${notes.join(' ')}` : '.'}`,
-        tone: 'success',
+        tone: failed && !uploaded ? 'error' : 'success',
       })
     } catch (cause) {
       setImportStatus({
