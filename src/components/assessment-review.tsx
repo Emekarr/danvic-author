@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Assessment, AssessmentAttempt } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, Card, Field, FormMessage, Input, Textarea } from '@danvic/ui'
-import { ArrowLeft, CheckCircle2, ChevronRight, Eye } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronRight, Eye, Paperclip } from 'lucide-react'
 
 export function AssessmentReview({
   assessment,
@@ -184,6 +184,11 @@ function SubmissionCard({
                   ? answer?.text || <em>No written response</em>
                   : labels.join(', ') || <em>No option selected</em>}
               </div>
+              {question.resources?.length ? (
+                <p className="as-question-resources">
+                  <Paperclip aria-hidden="true" /> Resources: {question.resources.map((resource) => resource.fileName).join(', ')}
+                </p>
+              ) : null}
               {pending ? (
                 <div className="as-grade-grid">
                   <Field label={`Points awarded (max ${question.points})`} required>

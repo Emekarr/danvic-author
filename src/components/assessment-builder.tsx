@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Course, SignedUpload } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Button, CustomDropdown, Field, FormMessage, Input, Textarea } from '@danvic/ui'
-import { CheckSquare2, CircleAlert, Plus, Trash2, UploadCloud } from 'lucide-react'
+import { CheckSquare2, CircleAlert, Paperclip, Plus, Trash2, UploadCloud } from 'lucide-react'
 import {
   attachmentIsTooLarge,
   clearPendingCourseDraft,
@@ -23,8 +23,11 @@ type QuestionDraft = {
   options: OptionDraft[]
   mediaType: '' | 'image' | 'video' | 'audio'
   mediaFile: File | null
+  resources: File[]
   points: number
 }
+
+const MAX_QUESTION_RESOURCES = 10
 
 const newQuestion = (index: number): QuestionDraft => ({
   prompt: '',
@@ -35,6 +38,7 @@ const newQuestion = (index: number): QuestionDraft => ({
   ],
   mediaType: '',
   mediaFile: null,
+  resources: [],
   points: 1,
 })
 
@@ -126,6 +130,11 @@ export function AssessmentBuilder({
               )
             const preparedQuestions = []
             for (const question of questions) {
+              const resources = []
+              for (const file of question.resources) {
+                const { attachmentPath, fileName } = await uploadQuestionResource(file)
+                resources.push({ id: crypto.randomUUID(), attachmentPath, fileName })
+              }
               preparedQuestions.push({
                 prompt: question.prompt,
                 type: question.type,
@@ -141,6 +150,7 @@ export function AssessmentBuilder({
                 mediaUrl: question.mediaFile
                   ? await uploadAssessmentMedia(question.mediaFile)
                   : null,
+                resources,
                 points: question.points,
               })
             }
@@ -411,6 +421,51 @@ export function AssessmentBuilder({
                       />
                     </Field>
                   </div>
+                  <Field
+                    label="Resources"
+                    hint={`Optional files learners open alongside this question (${question.resources.length}/${MAX_QUESTION_RESOURCES} added).`}
+                  >
+                    <Input
+                      type="file"
+                      multiple
+                      disabled={question.resources.length >= MAX_QUESTION_RESOURCES}
+                      onChange={(event) => {
+                        const incoming = Array.from(event.target.files ?? [])
+                        updateQuestion(index, {
+                          resources: [...question.resources, ...incoming].slice(
+                            0,
+                            MAX_QUESTION_RESOURCES,
+                          ),
+                        })
+                        event.target.value = ''
+                      }}
+                    />
+                  </Field>
+                  {question.resources.length ? (
+                    <ul className="as-resource-list">
+                      {question.resources.map((file, resourceIndex) => (
+                        <li key={`${file.name}-${resourceIndex}`}>
+                          <Paperclip aria-hidden="true" />
+                          <span>{file.name}</span>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Remove resource ${file.name}`}
+                            onClick={() =>
+                              updateQuestion(index, {
+                                resources: question.resources.filter(
+                                  (_, fileIndex) => fileIndex !== resourceIndex,
+                                ),
+                              })
+                            }
+                          >
+                            <Trash2 />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   {question.mediaFile ? (
                     <div
                       className={`as-media-note${attachmentIsTooLarge(question.mediaFile) ? ' is-invalid' : ''}`}
@@ -575,6 +630,28 @@ async function uploadAssessmentMedia(file: File): Promise<string> {
   })
   if (!response.ok) throw new Error(`${file.name} could not be uploaded`)
   return signed.attachmentPath
+}
+
+async function uploadQuestionResource(
+  file: File,
+): Promise<{ attachmentPath: string; fileName: string }> {
+  if (attachmentIsTooLarge(file))
+    throw new Error(`${file.name} is over 100 MiB and cannot be uploaded`)
+  const signed = await apiFetch<SignedUpload>('/api/uploads/sign', {
+    method: 'POST',
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      sizeBytes: file.size,
+    }),
+  })
+  const response = await fetch(signed.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  })
+  if (!response.ok) throw new Error(`${file.name} could not be uploaded`)
+  return { attachmentPath: signed.attachmentPath, fileName: file.name }
 }
 
 const mediaTypeForFile = (file: File): QuestionDraft['mediaType'] => {
