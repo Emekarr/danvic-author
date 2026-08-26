@@ -243,12 +243,16 @@ export function AssessmentBuilder({
                 </div>
               )}
             </div>
-            <Field label="Time allowed (minutes)" required>
+            <Field
+              label="Time allowed (minutes)"
+              required
+              hint="Between 5 and 180 minutes (3 hours)."
+            >
               <Input
                 name="durationMinutes"
                 type="number"
-                min={1}
-                max={1440}
+                min={5}
+                max={180}
                 defaultValue={30}
                 required
               />
