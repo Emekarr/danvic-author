@@ -56,6 +56,7 @@ export function AssessmentBuilder({
   const [manualReview, setManualReview] = useState(false)
   const [courseId, setCourseId] = useState(initialCourseId)
   const [maxAttempts, setMaxAttempts] = useState(initialAttempts)
+  const [passingScorePercent, setPassingScorePercent] = useState(70)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [pendingCourse, setPendingCourse] = useState<PendingCourseDraft | null>(null)
@@ -68,6 +69,12 @@ export function AssessmentBuilder({
       question.type !== 'multiple_choice' ||
       question.options.filter((option) => option.correct).length === 1,
   )
+  const totalScore = questions.reduce(
+    (sum, question) => sum + (Number.isFinite(question.points) ? question.points : 0),
+    0,
+  )
+  const requiredPoints = Math.ceil((totalScore * passingScorePercent) / 100)
+  const passMarkAchievable = totalScore > 0 && requiredPoints <= totalScore
 
   useEffect(() => {
     if (!createWithPendingCourse) return
@@ -245,15 +252,21 @@ export function AssessmentBuilder({
             <Field
               label="Passing score (%)"
               required
-              hint="Scores at or above this percentage pass."
+              hint={
+                passMarkAchievable
+                  ? `Learners need at least ${requiredPoints} of ${totalScore} points to pass.`
+                  : 'The pass mark is higher than the total score achievable from the questions.'
+              }
             >
               <Input
                 name="passingScorePercent"
                 type="number"
                 min={0}
                 max={100}
-                defaultValue={70}
+                value={passingScorePercent}
+                onChange={(event) => setPassingScorePercent(Number(event.target.value))}
                 required
+                aria-invalid={!passMarkAchievable || undefined}
               />
             </Field>
             <Field
@@ -529,7 +542,11 @@ export function AssessmentBuilder({
             </Button>
             <Button
               busy={busy}
-              disabled={!allMcqsHaveOneCorrectAnswer || (createWithPendingCourse && !pendingCourse)}
+              disabled={
+                !allMcqsHaveOneCorrectAnswer ||
+                !passMarkAchievable ||
+                (createWithPendingCourse && !pendingCourse)
+              }
             >
               <CheckSquare2 aria-hidden="true" />
               {createWithPendingCourse ? 'Create course with assessment' : 'Create assessment'}
