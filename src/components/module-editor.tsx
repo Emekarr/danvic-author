@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { JSONContent } from '@tiptap/core'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -329,7 +330,16 @@ export function ModuleEditor({
             },
           }
         },
-      }).configure({ allowBase64: false, inline: false }),
+      }).configure({
+        allowBase64: false,
+        inline: false,
+        resize: {
+          enabled: true,
+          minWidth: 60,
+          minHeight: 60,
+          alwaysPreserveAspectRatio: true,
+        },
+      }),
       TableKit.configure({ table: { resizable: true } }),
     ],
     [],
@@ -437,8 +447,17 @@ export function ModuleEditor({
       setImportStatus({ message: 'That does not look like a valid image address.', tone: 'error' })
       return
     }
-    editor.chain().focus().setImage({ src }).run()
+    collapseImageNodeSelection().setImage({ src }).run()
   }
+  // A freshly inserted image stays node-selected; inserting another image would
+  // replace it, so move the caret after the selected image first.
+  const collapseImageNodeSelection = () =>
+    editor.chain().focus().command(({ tr, dispatch }) => {
+      const { selection } = tr
+      if (selection instanceof NodeSelection && selection.node.type.name === 'image')
+        if (dispatch) tr.setSelection(TextSelection.near(tr.doc.resolve(selection.to)))
+      return true
+    })
   const insertImageFile = async (file: File | undefined) => {
     if (!file) return
     setImportStatus({ message: '', tone: 'neutral' })
@@ -457,9 +476,7 @@ export function ModuleEditor({
     setImportStatus({ message: `Uploading ${file.name}…`, tone: 'neutral' })
     try {
       const image = await uploadImage(file)
-      editor
-        .chain()
-        .focus()
+      collapseImageNodeSelection()
         .setImage({ src: image.viewUrl })
         .updateAttributes('image', { attachmentPath: image.attachmentPath })
         .run()
