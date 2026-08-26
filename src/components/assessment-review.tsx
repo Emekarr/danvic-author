@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Assessment, AssessmentAttempt } from '@danvic/api-client'
 import { apiFetch } from '@danvic/api-client'
 import { Badge, Button, Card, Field, FormMessage, Input, Textarea } from '@danvic/ui'
-import { CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronRight, Eye } from 'lucide-react'
 
 export function AssessmentReview({
   assessment,
@@ -14,6 +14,7 @@ export function AssessmentReview({
   assessment: Assessment
   submissions: AssessmentAttempt[]
 }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   if (!submissions.length)
     return (
       <Card className="sb-empty-state">
@@ -21,11 +22,59 @@ export function AssessmentReview({
         <p>Learner submissions will appear here after they finish the assessment.</p>
       </Card>
     )
+  const selected = submissions.find((submission) => submission.id === selectedId) ?? null
+  if (selected)
+    return (
+      <div className="as-review-list">
+        <button
+          type="button"
+          className="sb-button sb-button--ghost sb-button--md as-review-back"
+          onClick={() => setSelectedId(null)}
+        >
+          <ArrowLeft aria-hidden="true" /> All attempts
+        </button>
+        <SubmissionCard assessment={assessment} submission={selected} />
+      </div>
+    )
   return (
-    <div className="as-review-list">
-      {submissions.map((submission) => (
-        <SubmissionCard assessment={assessment} submission={submission} key={submission.id} />
-      ))}
+    <div className="as-attempt-list" role="list" aria-label="Assessment attempts">
+      {[...submissions]
+        .sort((left, right) => left.attemptNumber - right.attemptNumber)
+        .map((submission) => {
+          const pending = submission.status === 'pending_review'
+          return (
+            <button
+              type="button"
+              role="listitem"
+              className="as-attempt-row"
+              key={submission.id}
+              onClick={() => setSelectedId(submission.id)}
+            >
+              <span className="as-attempt-row-main">
+                <strong>
+                  {submission.student
+                    ? `${submission.student.firstName} ${submission.student.lastName}`
+                    : 'Learner'}
+                </strong>
+                <small>{submission.student?.email}</small>
+              </span>
+              <Badge>Attempt {submission.attemptNumber}</Badge>
+              <Badge tone={pending ? 'amber' : submission.passed ? 'green' : 'red'}>
+                {pending
+                  ? 'needs review'
+                  : `${submission.passed ? 'passed' : 'failed'} · ${submission.score ?? 0}/${submission.maxScore}`}
+              </Badge>
+              <span className="as-attempt-row-date">
+                {submission.submittedAt
+                  ? new Date(submission.submittedAt).toLocaleString()
+                  : 'In progress'}
+              </span>
+              <span className="as-attempt-row-view">
+                <Eye aria-hidden="true" /> View <ChevronRight aria-hidden="true" />
+              </span>
+            </button>
+          )
+        })}
     </div>
   )
 }
