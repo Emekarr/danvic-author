@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Badge } from '@danvic/ui'
-import { ArrowRight, BookOpen, ClipboardCheck, FileCheck2, Users } from 'lucide-react'
-import { dummyContent, dummyAssessments, dummyReviews, dummyTutors, countsByStatus } from '@/lib/author-dummy'
+import { useEffect, useState } from 'react'
+import { ArrowRight, BookOpen, ClipboardCheck, FileCheck2, Library } from 'lucide-react'
+import { apiFetch, type PaginatedResult, type ReviewableContent } from '@danvic/api-client'
+import { useWorkspace } from '@/lib/data'
 
 function StatCard({ label, value, note, href, icon: Icon }: { label: string; value: number | string; note: string; href: string; icon: React.ElementType }) {
   return (
@@ -18,60 +19,62 @@ function StatCard({ label, value, note, href, icon: Icon }: { label: string; val
 }
 
 export function AuthorOverview() {
-  const counts = countsByStatus(dummyContent)
-  const pendingReview = dummyReviews.filter((r) => r.status === 'pending').length
-  const pendingAssessments = dummyAssessments.filter((a) => a.status === 'pending_review').length
-  const tutorsPending = dummyTutors.filter((t) => t.pending > 0).length
+  const { courses, assessments, sessions, loading, error } = useWorkspace()
+  const [questionTotal, setQuestionTotal] = useState<number | null>(null)
+  const [contentTotal, setContentTotal] = useState<number | null>(null)
 
-  const recentContent = [...dummyContent].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5)
-  const pendingContent = dummyContent.filter((c) => c.status === 'pending_review').slice(0, 4)
-  const tutorsNeedingUpdate = dummyTutors.filter((t) => t.requiresUpdate > 0).slice(0, 4)
+  useEffect(() => {
+    let active = true
+    void apiFetch<PaginatedResult<unknown>>('/api/question-bank?page=1&limit=1')
+      .then((result) => {
+        if (active) setQuestionTotal(result.page?.total ?? 0)
+      })
+      .catch(() => {
+        if (active) setQuestionTotal(null)
+      })
+    void apiFetch<PaginatedResult<ReviewableContent>>('/api/content-governance/mine?page=1&limit=1')
+      .then((result) => {
+        if (active) setContentTotal(result.page?.total ?? 0)
+      })
+      .catch(() => {
+        if (active) setContentTotal(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  if (loading) return <p className="ad-empty-line">Loading your overview…</p>
+  if (error) return <p className="ad-empty-line" data-tone="error">{error}</p>
+
+  const openAssessments = assessments.filter((assessment) => assessment.availability === 'open').length
+  const upcomingSessions = sessions.filter((session) => session.status !== 'ended').length
+  const recentCourses = [...courses]
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, 5)
+  const recentAssessments = [...assessments]
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, 5)
 
   return (
     <div className="ad-overview">
       <header className="sb-page-header ad-overview-header">
         <div>
           <h1>Author Overview</h1>
-          <p>Track content, assessments, reviews and tutors at a glance — dummy data only, no backend.</p>
+          <p>Track your courses, assessments, content status and question bank at a glance.</p>
         </div>
         <div className="sb-page-actions">
-          <Link href="/content" className="sb-button sb-button--primary sb-button--md">Manage content</Link>
+          <Link href="/courses/new" className="sb-button sb-button--secondary sb-button--md">Create course</Link>
+          <Link href="/assessments/new" className="sb-button sb-button--primary sb-button--md">Create assessment</Link>
         </div>
       </header>
 
-      {/* Top stats */}
       <section className="ad-directory" aria-label="Overview stats">
         <div className="ad-directory-grid">
-          <StatCard label="Content" value={dummyContent.length} note={`${counts.published} published · ${counts.pending_review} pending`} href="/content" icon={BookOpen} />
-          <StatCard label="Assessments" value={dummyAssessments.length} note={`${pendingAssessments} pending review · ${dummyAssessments.filter((a)=>a.type==='quiz').length} quizzes`} href="/assessments" icon={ClipboardCheck} />
-          <StatCard label="Content for review" value={pendingReview} note={`${dummyReviews.filter((r)=>r.status==='needs_revision').length} needs revision`} href="/content-review/technical-accuracy" icon={FileCheck2} />
-          <StatCard label="Tutors" value={dummyTutors.length} note={`${tutorsPending} with pending · ${tutorsNeedingUpdate.length} need updates`} href="/tutors" icon={Users} />
-        </div>
-      </section>
-
-      {/* Detailed KPI grids */}
-      <section className="ad-section ad-section--plain" style={{ paddingTop: 0 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-          <div style={{ display: 'grid', gap: 6, padding: '14px 0', borderBottom: '1px solid var(--sb-border)' }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--sb-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Content — pending review</span>
-            <strong style={{ fontSize: 22 }}>{counts.pending_review}</strong>
-            <Link href="/content?filter=pending_review" className="ad-text-link" style={{ fontSize: 12 }}>View pending <ArrowRight style={{ width: 12 }} /></Link>
-          </div>
-          <div style={{ display: 'grid', gap: 6, padding: '14px 0', borderBottom: '1px solid var(--sb-border)' }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--sb-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Approved</span>
-            <strong style={{ fontSize: 22 }}>{counts.approved}</strong>
-            <span style={{ fontSize: 12, color: 'var(--sb-subtle)' }}>{counts.published} published</span>
-          </div>
-          <div style={{ display: 'grid', gap: 6, padding: '14px 0', borderBottom: '1px solid var(--sb-border)' }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--sb-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rejected &amp; Archived</span>
-            <strong style={{ fontSize: 22 }}>{counts.rejected + counts.archived}</strong>
-            <span style={{ fontSize: 12, color: 'var(--sb-subtle)' }}>{counts.rejected} rejected · {counts.archived} archived</span>
-          </div>
-          <div style={{ display: 'grid', gap: 6, padding: '14px 0', borderBottom: '1px solid var(--sb-border)' }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--sb-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Question Bank</span>
-            <strong style={{ fontSize: 22 }}>{8}</strong>
-            <Link href="/assessments/question-bank" className="ad-text-link" style={{ fontSize: 12 }}>Open bank <ArrowRight style={{ width: 12 }} /></Link>
-          </div>
+          <StatCard label="Courses" value={courses.length} note={`${upcomingSessions} upcoming live sessions`} href="/courses" icon={BookOpen} />
+          <StatCard label="Assessments" value={assessments.length} note={`${openAssessments} open`} href="/assessments" icon={ClipboardCheck} />
+          <StatCard label="My content" value={contentTotal ?? '—'} note="Drafts, reviews and publications" href="/content-review" icon={FileCheck2} />
+          <StatCard label="Question bank" value={questionTotal ?? '—'} note="Draft and reusable questions" href="/assessments/question-bank" icon={Library} />
         </div>
       </section>
 
@@ -79,43 +82,49 @@ export function AuthorOverview() {
         <section className="ad-section ad-section--plain ad-overview-section">
           <div className="ad-section-heading">
             <div>
-              <h2>Recent content</h2>
-              <p>Latest updates across all statuses.</p>
+              <h2>Recent courses</h2>
+              <p>Latest updates across your courses.</p>
             </div>
-            <Link className="ad-text-link" href="/content">View all <ArrowRight aria-hidden="true" /></Link>
+            <Link className="ad-text-link" href="/courses">View all <ArrowRight aria-hidden="true" /></Link>
           </div>
-          <div className="ad-overview-list">
-            {recentContent.map((c) => (
-              <div className="ad-overview-list-row" key={c.id}>
-                <span className="ad-overview-list-copy">
-                  <strong>{c.title}</strong>
-                  <small>{c.tutor} · {c.courseName} · {new Date(c.updatedAt).toLocaleDateString('en-NG')}</small>
-                </span>
-                <Badge tone={c.status === 'published' || c.status === 'approved' ? 'green' : c.status === 'rejected' ? 'red' : c.status === 'pending_review' ? 'violet' : c.status === 'archived' ? 'neutral' : 'blue'} dot>
-                  {c.status.replace('_', ' ')}
-                </Badge>
+          {recentCourses.length ? (
+            <div className="ad-overview-list">
+              {recentCourses.map((course) => (
+                <div className="ad-overview-list-row" key={course.id}>
+                  <span className="ad-overview-list-copy">
+                    <strong>{course.name}</strong>
+                    <small>{course.type === 'live' ? 'Live course' : 'Premade course'} · {new Date(course.updatedAt).toLocaleDateString('en-NG')}</small>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="ad-empty-state">
+              <p className="ad-empty-line">No courses yet. Create your first course.</p>
+              <div className="sb-page-actions">
+                <Link href="/courses/new" className="sb-button sb-button--primary sb-button--md">Create course</Link>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </section>
 
         <section className="ad-section ad-section--plain ad-overview-section">
           <div className="ad-section-heading">
             <div>
               <h2>Quick actions</h2>
-              <p>Jump to each workspace area.</p>
+              <p>Create content and jump to each workspace area.</p>
             </div>
           </div>
           <div className="ad-action-list" style={{ display: 'grid', gap: 8 }}>
             {[
-              { label: 'Content — all with filters', href: '/content' },
-              { label: 'Assessments overview', href: '/assessments' },
-              { label: 'Content review queues', href: '/content-review/technical-accuracy' },
-              { label: 'Version control', href: '/version-control/history' },
-              { label: 'Tutors overview', href: '/tutors' },
-            ].map((a) => (
-              <Link key={a.href} href={a.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 44, padding: '0 12px', border: '1px solid var(--sb-border)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
-                <span>{a.label}</span><ArrowRight style={{ width: 14 }} />
+              { label: 'Create a course', href: '/courses/new' },
+              { label: 'Create an assessment', href: '/assessments/new' },
+              { label: 'Create a draft question', href: '/assessments/question-bank' },
+              { label: 'My content status', href: '/content-review' },
+              { label: 'Pending review queue', href: '/assessments/pending-review' },
+            ].map((action) => (
+              <Link key={action.href + action.label} href={action.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 44, padding: '0 12px', border: '1px solid var(--sb-border)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                <span>{action.label}</span><ArrowRight style={{ width: 14 }} />
               </Link>
             ))}
           </div>
@@ -126,38 +135,34 @@ export function AuthorOverview() {
         <section className="ad-section ad-section--plain">
           <div className="ad-section-heading">
             <div>
-              <h2>Pending review — content</h2>
-              <p>{pendingContent.length} items awaiting reviewer.</p>
+              <h2>Recent assessments</h2>
+              <p>Latest updates across your assessments.</p>
             </div>
-            <Link href="/content?filter=pending_review" className="ad-text-link">View pending <ArrowRight style={{ width: 12 }} /></Link>
+            <Link href="/assessments" className="ad-text-link">View all <ArrowRight aria-hidden="true" /></Link>
           </div>
-          <div className="sb-table-wrap">
-            <table className="sb-table">
-              <thead><tr><th>Title</th><th>Tutor</th><th>Type</th></tr></thead>
-              <tbody>
-                {pendingContent.map((c) => (
-                  <tr key={c.id}><td>{c.title}</td><td>{c.tutor}</td><td><Badge tone="violet" dot>Pending</Badge></td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-        <section className="ad-section ad-section--plain">
-          <div className="ad-section-heading">
-            <div>
-              <h2>Tutors requiring updates</h2>
-              <p>{tutorsNeedingUpdate.length} tutors with content needing revision.</p>
+          {recentAssessments.length ? (
+            <div className="sb-table-wrap">
+              <table className="sb-table">
+                <thead><tr><th>Title</th><th>Questions</th><th>Status</th></tr></thead>
+                <tbody>
+                  {recentAssessments.map((assessment) => (
+                    <tr key={assessment.id}>
+                      <td>{assessment.title}</td>
+                      <td>{assessment.questions.length}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{assessment.availability ?? 'scheduled'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <Link href="/tutors/requiring-updates" className="ad-text-link">View all <ArrowRight style={{ width: 12 }} /></Link>
-          </div>
-          <div style={{ display: 'grid', gap: 10 }}>
-            {tutorsNeedingUpdate.map((t) => (
-              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--sb-border)' }}>
-                <span style={{ display: 'grid' }}><strong style={{ fontSize: 13 }}>{t.name}</strong><small style={{ fontSize: 12, color: 'var(--sb-muted)' }}>{t.requiresUpdate} item(s) · {t.email}</small></span>
-                <Badge tone="amber" dot>Needs update</Badge>
+          ) : (
+            <div className="ad-empty-state">
+              <p className="ad-empty-line">No assessments yet. Create your first assessment.</p>
+              <div className="sb-page-actions">
+                <Link href="/assessments/new" className="sb-button sb-button--primary sb-button--md">Create assessment</Link>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </section>
       </div>
     </div>

@@ -2,13 +2,11 @@
 
 import { useEffect, type ReactNode } from 'react'
 import { AppShell } from '@danvic/ui'
-import { Award, Bookmark, BookOpen, ClipboardCheck, Clock, FileText, LayoutDashboard, Library, LockKeyhole, UserRound } from 'lucide-react'
+import { BookOpen, ClipboardCheck, Clock, LayoutDashboard, Library, LockKeyhole, UserRound } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { apiFetch } from '@danvic/api-client'
 import { SessionRenewal } from '@/components/session-renewal'
 import { useAuthor } from '@/lib/data'
-
-const dummyAuthorFallback = { firstName: 'Danvic', lastName: 'Author', email: 'author@danvic.ng' }
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const router = useRouter()
@@ -27,7 +25,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       </main>
     )
 
-  const displayAuthor = author ?? dummyAuthorFallback
+  if (!author)
+    return (
+      <main className="sb-login-form-wrap">
+        <p className="sb-form-message" data-tone="error">Could not load your workspace. Please sign in again.</p>
+      </main>
+    )
+
+  const displayAuthor = author
 
   return (
     <AppShell
@@ -44,11 +49,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           label: 'Assessment',
           items: [
             { label: 'Overview', href: '/assessments', icon: ClipboardCheck },
-            { label: 'Assignments', href: '/assessments/assignments', icon: FileText },
-            { label: 'Quizzes', href: '/assessments/quizzes', icon: Bookmark },
-            { label: 'Exams', href: '/assessments/exams', icon: Award },
             { label: 'Question Bank', href: '/assessments/question-bank', icon: Library },
-            { label: 'Pending Assessment Review', href: '/assessments/pending-review', icon: Clock },
+            { label: 'Pending Review', href: '/assessments/pending-review', icon: Clock },
           ],
         },
         { label: 'Account', items: [{ label: 'Profile', href: '/profile', icon: UserRound }, { label: 'Security', href: '/security', icon: LockKeyhole }] },

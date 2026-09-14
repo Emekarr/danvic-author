@@ -1,3 +1,7 @@
-import { AuthorAssessments } from '@/components/author-assessments'
+import { redirect } from 'next/navigation'
+
 export const metadata = { title: 'Quizzes' }
-export default function Page(){ return <AuthorAssessments tab="quiz" /> }
+
+export default function Page() {
+  redirect('/assessments')
+}

@@ -1,18 +1,7 @@
-'use client'
-import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
-import { AuthorContentPage } from '@/components/author-content'
+import { redirect } from 'next/navigation'
 
-function ContentView() {
-  const q = useSearchParams()
-  const filter = q.get('filter') ?? undefined
-  return <AuthorContentPage initialFilter={filter} />
-}
+export const metadata = { title: 'Content' }
 
 export default function Page() {
-  return (
-    <Suspense fallback={<p className="ad-empty-line">Loading content…</p>}>
-      <ContentView />
-    </Suspense>
-  )
+  redirect('/content-review')
 }

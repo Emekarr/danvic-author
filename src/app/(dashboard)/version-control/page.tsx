@@ -1,2 +1,7 @@
 import { redirect } from 'next/navigation'
-export default function Page(){ redirect('/version-control/history') }
+
+export const metadata = { title: 'Version control' }
+
+export default function Page() {
+  redirect('/content-review')
+}

@@ -1,3 +1,7 @@
-import { AuthorVersionControl } from '@/components/author-version-control'
-export const metadata = { title: 'Version Control' }
-export default function Page(){ return <AuthorVersionControl tab="history" /> }
+import { redirect } from 'next/navigation'
+
+export const metadata = { title: 'Version control' }
+
+export default function Page() {
+  redirect('/content-review')
+}

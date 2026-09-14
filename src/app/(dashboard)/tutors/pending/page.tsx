@@ -1,3 +1,7 @@
-import { AuthorTutors } from '@/components/author-tutors'
-export const metadata = { title: 'Tutors' }
-export default function Page(){ return <AuthorTutors tab="pending" /> }
+import { redirect } from 'next/navigation'
+
+export const metadata = { title: 'pending' }
+
+export default function Page() {
+  redirect('/courses')
+}
