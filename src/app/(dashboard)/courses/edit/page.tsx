@@ -53,7 +53,7 @@ function EditCourseView() {
       <PageHeader
         eyebrow="Course builder"
         title="Edit course"
-        description="Update the course details, modules, and attachments. Your changes go live when you save."
+        description="Update the draft details, modules, and attachments. Published snapshots are immutable; submit a new version for review."
       />
       {loading ? <p className="ad-empty-line">Loading course…</p> : null}
       {!loading && error ? (

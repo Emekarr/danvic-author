@@ -1,13 +1,7 @@
-'use client'
+import { AuthorOverview } from '@/components/author-overview'
 
-import { Overview } from '@/components/overview'
-import { useWorkspace } from '@/lib/data'
+export const metadata = { title: 'Overview' }
 
 export default function DashboardPage() {
-  const { courses, assessments, transactions, loading, error } = useWorkspace()
-
-  if (loading) return <p className="ad-empty-line">Loading your workspace…</p>
-  if (error) return <p className="ad-empty-line" data-tone="error">{error}</p>
-
-  return <Overview courses={courses} assessments={assessments} transactions={transactions} />
+  return <AuthorOverview />
 }

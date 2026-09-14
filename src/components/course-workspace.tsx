@@ -45,7 +45,7 @@ export function CourseWorkspace({
       <header className="sb-page-header">
         <div>
           <h1>Courses</h1>
-          <p>Publish, update, and review every authored learning experience.</p>
+          <p>Build drafts, submit them for review, and manage controlled updates.</p>
         </div>
         <div className="sb-page-actions">
           <CourseCreateButton />

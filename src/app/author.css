@@ -2300,3 +2300,19 @@ iframe,
     padding-inline: 14px;
   }
 }
+/* Governance views intentionally keep review state and version history visible. */
+.ad-governance-action { position: relative; display: inline-block; margin-top: 16px; }
+.ad-inline-dialog { display: grid; gap: 12px; max-width: 520px; margin-top: 12px; padding: 16px; border: 1px solid var(--sb-border); border-radius: 12px; background: #fff; }
+.ad-inline-dialog textarea, .ad-inline-create .sb-input { width: 100%; min-height: 38px; border: 1px solid var(--sb-border-strong); border-radius: 8px; padding: 8px 10px; font: inherit; resize: vertical; }
+.ad-inline-dialog > div:last-of-type { display: flex; justify-content: flex-end; gap: 8px; }
+.ad-inline-create { display: flex; gap: 10px; margin-bottom: 16px; }
+.ad-inline-create .sb-input { max-width: 560px; }
+.ad-table-subline { display: block; margin-top: 4px; color: var(--sb-muted); font-size: 12px; }
+.ad-detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.ad-detail-grid > div { display: grid; gap: 6px; padding: 14px 0; border-bottom: 1px solid var(--sb-border); }
+.ad-detail-grid strong { font-size: 18px; }
+.ad-review-record { padding: 16px 0; border-bottom: 1px solid var(--sb-border); }
+.ad-review-record > div { display: flex; justify-content: space-between; gap: 12px; }
+.ad-review-record > div > span { color: var(--sb-muted); font-size: 12px; }
+.ad-review-record ul { padding-left: 18px; color: var(--sb-muted); font-size: 13px; }
+@media (max-width: 760px) { .ad-detail-grid { grid-template-columns: 1fr 1fr; } .ad-inline-create { flex-direction: column; } }

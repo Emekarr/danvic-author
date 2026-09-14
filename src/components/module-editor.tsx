@@ -50,6 +50,7 @@ import {
   Unlink,
   ImageUp,
 } from 'lucide-react'
+import { CustomDropdown } from '@danvic/ui'
 import {
   moduleContentIsEmpty,
   moduleContentText,
@@ -138,6 +139,31 @@ const LINE_HEIGHTS = [
   ['1.5', '1.5'],
   ['2', '2.0'],
 ] as const
+
+function ToolbarDropdown({
+  value,
+  label,
+  options,
+  onChange,
+  className,
+}: {
+  value: string
+  label: string
+  options: readonly (readonly [string, string])[]
+  onChange: (value: string) => void
+  className: string
+}) {
+  return (
+    <div className={`ad-module-editor-dropdown ${className}`}>
+      <CustomDropdown<string>
+        value={value}
+        onChange={onChange}
+        options={options.map(([optionValue, optionLabel]) => ({ value: optionValue, label: optionLabel }))}
+        aria-label={label}
+      />
+    </div>
+  )
+}
 
 const colorInputValue = (value: string | undefined, fallback: string) =>
   value && /^#[\da-f]{6}$/iu.test(value) ? value : fallback
@@ -679,13 +705,17 @@ export function ModuleEditor({
           </ToolbarButton>
         </div>
         <div className="ad-module-editor-tool-group">
-          <select
-            className="ad-module-editor-select ad-module-editor-select--style"
-            aria-label="Paragraph style"
-            title="Paragraph style"
+          <ToolbarDropdown
+            className="ad-module-editor-dropdown--style"
+            label="Paragraph style"
             value={blockStyle}
-            onChange={(event) => {
-              const style = event.target.value
+            options={[
+              ['paragraph', 'Paragraph'],
+              ['heading-1', 'Heading 1'],
+              ['heading-2', 'Heading 2'],
+              ['heading-3', 'Heading 3'],
+            ]}
+            onChange={(style) => {
               if (style === 'paragraph') editor.chain().focus().setParagraph().run()
               else
                 editor
@@ -694,46 +724,27 @@ export function ModuleEditor({
                   .setHeading({ level: Number(style.at(-1)) as 1 | 2 | 3 })
                   .run()
             }}
-          >
-            <option value="paragraph">Paragraph</option>
-            <option value="heading-1">Heading 1</option>
-            <option value="heading-2">Heading 2</option>
-            <option value="heading-3">Heading 3</option>
-          </select>
-          <select
-            className="ad-module-editor-select ad-module-editor-select--font"
-            aria-label="Font family"
-            title="Font family"
+          />
+          <ToolbarDropdown
+            className="ad-module-editor-dropdown--font"
+            label="Font family"
             value={textStyle.fontFamily ?? ''}
-            onChange={(event) => {
-              const font = event.target.value
+            options={FONT_FAMILIES}
+            onChange={(font) => {
               if (font) editor.chain().focus().setFontFamily(font).run()
               else editor.chain().focus().unsetFontFamily().run()
             }}
-          >
-            {FONT_FAMILIES.map(([font, name]) => (
-              <option key={name} value={font}>
-                {name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="ad-module-editor-select ad-module-editor-select--size"
-            aria-label="Font size"
-            title="Font size"
+          />
+          <ToolbarDropdown
+            className="ad-module-editor-dropdown--size"
+            label="Font size"
             value={textStyle.fontSize ?? ''}
-            onChange={(event) => {
-              const size = event.target.value
+            options={FONT_SIZES}
+            onChange={(size) => {
               if (size) editor.chain().focus().setFontSize(size).run()
               else editor.chain().focus().unsetFontSize().run()
             }}
-          >
-            {FONT_SIZES.map(([size, name]) => (
-              <option key={name} value={size}>
-                {name}
-              </option>
-            ))}
-          </select>
+          />
         </div>
         <div className="ad-module-editor-tool-group">
           <ToolbarButton
@@ -861,23 +872,16 @@ export function ModuleEditor({
           </ToolbarButton>
         </div>
         <div className="ad-module-editor-tool-group">
-          <select
-            className="ad-module-editor-select ad-module-editor-select--spacing"
-            aria-label="Line spacing"
-            title="Line spacing"
+          <ToolbarDropdown
+            className="ad-module-editor-dropdown--spacing"
+            label="Line spacing"
             value={textStyle.lineHeight ?? ''}
-            onChange={(event) => {
-              const height = event.target.value
+            options={LINE_HEIGHTS}
+            onChange={(height) => {
               if (height) editor.chain().focus().setLineHeight(height).run()
               else editor.chain().focus().unsetLineHeight().run()
             }}
-          >
-            {LINE_HEIGHTS.map(([height, name]) => (
-              <option key={name} value={height}>
-                {name}
-              </option>
-            ))}
-          </select>
+          />
           {alignmentTools.map(([alignment, alignmentLabel, Icon]) => (
             <ToolbarButton
               key={String(alignment)}

@@ -3,15 +3,18 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { apiFetch } from '@danvic/api-client'
-import { Badge, Button, CodeInput, Field, FormMessage, PasswordInput } from '@danvic/ui'
+import { Badge, Button, Field, FormMessage, PasswordInput } from '@danvic/ui'
 import { Check, Fingerprint } from 'lucide-react'
+import { TwoFactorCodeInput } from './two-factor-code-input'
 
 export function SecuritySetup({ enabled }: { enabled: boolean }) {
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(enabled)
   const [tab, setTab] = useState<'password' | 'two-factor'>('password')
   const [setup, setSetup] = useState<{ qrCodeDataUrl: string; secret: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [setupCode, setSetupCode] = useState('')
   return (
     <div className="ad-security-layout">
       <section className="ad-security-details">
@@ -19,14 +22,14 @@ export function SecuritySetup({ enabled }: { enabled: boolean }) {
           <div>
             <h2>Security details</h2>
           </div>
-          <Badge dot tone={enabled ? 'green' : 'amber'}>
-            {enabled ? 'Protected' : 'At risk'}
+          <Badge dot tone={twoFactorEnabled ? 'green' : 'amber'}>
+            {twoFactorEnabled ? 'Protected' : 'At risk'}
           </Badge>
         </div>
         <dl className="ad-details">
           <div>
             <dt>Two-factor</dt>
-            <dd>{enabled ? 'Enabled' : 'Not enabled'}</dd>
+            <dd>{twoFactorEnabled ? 'Enabled' : 'Not enabled'}</dd>
           </div>
           <div>
             <dt>Password</dt>
@@ -115,20 +118,20 @@ export function SecuritySetup({ enabled }: { enabled: boolean }) {
           </div>
           <div className="ad-security-2fa">
             <div className="ad-security-2fa-head">
-              <span className="ad-security-2fa-icon" data-on={enabled || undefined}>
+              <span className="ad-security-2fa-icon" data-on={twoFactorEnabled || undefined}>
                 <Fingerprint aria-hidden="true" />
               </span>
               <div>
-                <h3>{enabled ? 'Authenticator enabled' : 'Authenticator not configured'}</h3>
+                <h3>{twoFactorEnabled ? 'Authenticator enabled' : 'Authenticator not configured'}</h3>
                 <p>
-                  {enabled
+                  {twoFactorEnabled
                     ? 'A one-time code from your authenticator app is required whenever you sign in.'
-                    : 'Set up an authenticator app to protect this account. Every accepted code is atomically marked as used.'}
+                    : 'Set up an authenticator app. Two-factor authentication is required for every tutor account.'}
                 </p>
               </div>
             </div>
             <ul className="ad-security-checks">
-              {enabled ? (
+              {twoFactorEnabled ? (
                 <>
                   <li>
                     <Check aria-hidden="true" /> A one-time code is required at every sign-in
@@ -143,19 +146,19 @@ export function SecuritySetup({ enabled }: { enabled: boolean }) {
               ) : (
                 <>
                   <li>
-                    <Check aria-hidden="true" /> Recommended for every course author
+                    <Check aria-hidden="true" /> Required for every course author
                   </li>
                   <li>
                     <Check aria-hidden="true" /> Uses one-time codes from an authenticator app
                   </li>
                   <li>
-                    <Check aria-hidden="true" /> Optional, and reversible at any time
+                    <Check aria-hidden="true" /> Required at every sign-in
                   </li>
                 </>
               )}
             </ul>
           </div>
-          {!enabled ? (
+          {!twoFactorEnabled ? (
             !setup ? (
               <Button
                 busy={busy}
@@ -164,7 +167,7 @@ export function SecuritySetup({ enabled }: { enabled: boolean }) {
                   setError('')
                   try {
                     setSetup(
-                      await apiFetch('/api/auth/two-factor/setup', {
+                      await apiFetch('/api/auth/2fa/setup', {
                         method: 'POST',
                         body: '{}',
                       }),
@@ -185,12 +188,14 @@ export function SecuritySetup({ enabled }: { enabled: boolean }) {
                   event.preventDefault()
                   setBusy(true)
                   setError('')
-                  const data = new FormData(event.currentTarget)
                   try {
-                    await apiFetch('/api/auth/two-factor/confirm', {
+                    await apiFetch('/api/auth/2fa/confirm', {
                       method: 'POST',
-                      body: JSON.stringify({ code: data.get('code') }),
+                      body: JSON.stringify({ code: setupCode }),
                     })
+                    setSetupCode('')
+                    setSetup(null)
+                    setTwoFactorEnabled(true)
                     setMessage('Two-factor authentication is now enabled.')
                   } catch (cause) {
                     setError(cause instanceof Error ? cause.message : 'Could not confirm setup')
@@ -211,15 +216,13 @@ export function SecuritySetup({ enabled }: { enabled: boolean }) {
                   Manual key: <strong>{setup.secret}</strong>
                 </p>
                 <Field label="Authenticator code" required>
-                  <CodeInput
+                  <TwoFactorCodeInput
                     name="code"
-                    inputMode="numeric"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    required
+                    value={setupCode}
+                    onChange={setSetupCode}
                   />
                 </Field>
-                <Button busy={busy}>Confirm authenticator</Button>
+                <Button busy={busy} disabled={busy || setupCode.length !== 6}>Confirm authenticator</Button>
               </form>
             )
           ) : null}

@@ -9,8 +9,8 @@
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
-    "@danvic/api-client": "file:vendor/danvic-api-client-0.1.0.tgz",
-    "@danvic/ui": "file:vendor/danvic-ui-0.1.0.tgz",
+    "@danvic/api-client": "file:vendor/danvic-api-client-0.1.1.tgz",
+    "@danvic/ui": "file:vendor/danvic-ui-0.1.1.tgz",
     "@netless/fastboard-react": "^1.1.8",
     "@tiptap/extension-highlight": "3.30.2",
     "@tiptap/extension-image": "3.30.2",

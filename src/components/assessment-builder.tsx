@@ -58,6 +58,7 @@ export function AssessmentBuilder({
   const router = useRouter()
   const [questions, setQuestions] = useState<QuestionDraft[]>([newQuestion(1)])
   const [manualReview, setManualReview] = useState(false)
+  const [assessmentKind, setAssessmentKind] = useState<'assignment' | 'quiz' | 'exam'>('quiz')
   const [courseId, setCourseId] = useState(initialCourseId)
   const [maxAttempts, setMaxAttempts] = useState(initialAttempts)
   const [passingScorePercent, setPassingScorePercent] = useState(70)
@@ -177,6 +178,7 @@ export function AssessmentBuilder({
               method: 'POST',
               body: JSON.stringify({
                 title: data.get('title'),
+                kind: assessmentKind,
                 description: data.get('description'),
                 courseId: assessmentCourseId,
                 durationMinutes: Number(data.get('durationMinutes')),
@@ -212,6 +214,17 @@ export function AssessmentBuilder({
           <div className="ad-course-details-grid">
             <Field label="Assessment title" required>
               <Input name="title" maxLength={200} required />
+            </Field>
+            <Field label="Assessment type" required hint="Governance type is separate from learner attempt settings.">
+              <CustomDropdown<'assignment' | 'quiz' | 'exam'>
+                value={assessmentKind}
+                onChange={setAssessmentKind}
+                options={[
+                  { value: 'assignment', label: 'Assignment' },
+                  { value: 'quiz', label: 'Quiz' },
+                  { value: 'exam', label: 'Exam' },
+                ]}
+              />
             </Field>
             <div className="as-linked-course ad-span-2">
               {createWithPendingCourse && pendingCourse ? (

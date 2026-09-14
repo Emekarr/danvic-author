@@ -1,15 +1,17 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
+import { useEffect, useState } from 'react'
 import { apiFetch, type LoginResult } from '@danvic/api-client'
-import { AuthLayout, Button, CodeInput, Field, FormMessage, Input, PasswordInput } from '@danvic/ui'
+import { AuthLayout, Button, Field, FormMessage, Input, PasswordInput } from '@danvic/ui'
 import { BookOpen, CheckCircle2, LockKeyhole, ShieldCheck } from 'lucide-react'
 import styles from './auth-layout.module.css'
+import { TwoFactorCodeInput } from './two-factor-code-input'
 
 const features = [
   { icon: BookOpen, label: 'Build structured courses' },
-  { icon: ShieldCheck, label: 'Optional authenticator security' },
+  { icon: ShieldCheck, label: 'Required authenticator security' },
   { icon: LockKeyhole, label: 'Author-only publishing access' },
 ]
 
@@ -66,16 +68,28 @@ export function LoginForm() {
   )
 }
 
-export function TwoFactorForm() {
+export function TwoFactorForm({ setup = false }: { setup?: boolean }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const requestedNext = searchParams.get('next')
+  const next = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : ''
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [qrCode, setQrCode] = useState('')
+  const [secret, setSecret] = useState('')
+  const [code, setCode] = useState('')
+  useEffect(() => {
+    if (!setup) return
+    void apiFetch<{ qrCodeDataUrl: string; secret: string }>('/api/auth/2fa/setup', { method: 'POST', body: '{}' })
+      .then((result) => { setQrCode(result.qrCodeDataUrl); setSecret(result.secret) })
+      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not start MFA setup'))
+  }, [setup])
   return (
     <AuthLayout
       className={styles.authLayout!}
-      eyebrow="Second factor"
-      headline="Confirm it is really you."
-      description="This author account has optional authenticator protection enabled. Enter a current code to continue."
+      eyebrow={setup ? 'Required security setup' : 'Second factor'}
+      headline={setup ? 'Protect your author account.' : 'Confirm it is really you.'}
+      description={setup ? 'Set up MFA now. It is required for every tutor account.' : 'Author MFA is required at every sign-in. Enter a current code to continue.'}
       features={features}
     >
       <form
@@ -84,13 +98,12 @@ export function TwoFactorForm() {
           event.preventDefault()
           setBusy(true)
           setError('')
-          const data = new FormData(event.currentTarget)
           try {
-            const result = await apiFetch<{ next: string }>('/api/auth/two-factor/verify', {
+            const result = await apiFetch<{ next: string }>(setup ? '/api/auth/2fa/confirm' : '/api/auth/2fa/verify', {
               method: 'POST',
-              body: JSON.stringify({ code: data.get('code') }),
+              body: JSON.stringify({ code }),
             })
-            router.push(result.next)
+            router.push(next || result.next)
             router.refresh()
           } catch (cause) {
             setError(cause instanceof Error ? cause.message : 'Verification failed')
@@ -100,20 +113,19 @@ export function TwoFactorForm() {
         }}
       >
         <p className="sb-page-eyebrow">Verification</p>
-        <h2>Enter your six-digit code</h2>
-        <p>Each authenticator time step can be used only once.</p>
+        <h2>{setup ? 'Set up two-factor authentication' : 'Enter your six-digit code'}</h2>
+        <p>{setup ? 'Use Google Authenticator, 1Password, Authy, or another TOTP app.' : 'Each authenticator time step can be used only once.'}</p>
+        {qrCode ? <Image className="sb-qr" src={qrCode} alt="DANVIC author authenticator QR code" width={220} height={220} unoptimized /> : null}
+        {secret ? <p className="sb-form-message" data-tone="info">Manual key: <strong>{secret}</strong></p> : null}
         <div className="sb-login-fields">
           <Field label="Authenticator code" required>
-            <CodeInput
+            <TwoFactorCodeInput
               name="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
+              value={code}
+              onChange={setCode}
             />
           </Field>
-          <Button size="lg" busy={busy}>
+          <Button size="lg" busy={busy} disabled={busy || code.length !== 6 || (setup && !qrCode)}>
             Verify and continue
           </Button>
           <FormMessage>{error}</FormMessage>
@@ -168,7 +180,7 @@ export function AcceptInvitationForm({ token }: { token: string }) {
       >
         <p className="sb-page-eyebrow">Create account</p>
         <h2>Accept author invitation</h2>
-        <p>Two-factor authentication can be enabled after sign-in.</p>
+        <p>Two-factor authentication is required for every tutor account.</p>
         <div className="sb-login-fields">
           <div className="sb-form-grid">
             <Field label="First name" required>

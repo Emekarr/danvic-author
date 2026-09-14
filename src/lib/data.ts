@@ -35,22 +35,24 @@ export interface ResourceState<T> {
   data: T | null
   loading: boolean
   error: string
+  code: string
   reload: () => void
 }
 
 export function useResource<T>(path: string, gate = false): ResourceState<T> {
   const router = useRouter()
   const [tick, setTick] = useState(0)
-  const [state, setState] = useState<{ data: T | null; loading: boolean; error: string }>({
+  const [state, setState] = useState<{ data: T | null; loading: boolean; error: string; code: string }>({
     data: null,
     loading: true,
     error: '',
+    code: '',
   })
   useEffect(() => {
     let active = true
     apiFetch<T>(path)
       .then((data) => {
-        if (active) setState({ data, loading: false, error: '' })
+        if (active) setState({ data, loading: false, error: '', code: '' })
       })
       .catch((cause: unknown) => {
         if (!active) return
@@ -58,6 +60,7 @@ export function useResource<T>(path: string, gate = false): ResourceState<T> {
           data: null,
           loading: false,
           error: cause instanceof Error ? cause.message : 'Could not load data.',
+          code: cause instanceof Error ? (cause as Error & { code?: string }).code ?? '' : '',
         })
         if (gate) router.replace('/login')
       })
