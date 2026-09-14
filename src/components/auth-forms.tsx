@@ -94,10 +94,20 @@ export function TwoFactorForm({ setup = false }: { setup?: boolean }) {
     >
       <form
         className="sb-login-form"
+        noValidate
         onSubmit={async (event) => {
           event.preventDefault()
-          setBusy(true)
+          if (busy) return
           setError('')
+          if (!/^\d{6}$/.test(code)) {
+            setError('Enter all six digits from your authenticator app to continue.')
+            return
+          }
+          if (setup && !qrCode) {
+            setError('Your setup code is still loading. Please wait a moment and try again.')
+            return
+          }
+          setBusy(true)
           try {
             const result = await apiFetch<{ next: string }>(setup ? '/api/auth/2fa/confirm' : '/api/auth/2fa/verify', {
               method: 'POST',
@@ -125,7 +135,7 @@ export function TwoFactorForm({ setup = false }: { setup?: boolean }) {
               onChange={setCode}
             />
           </Field>
-          <Button size="lg" busy={busy} disabled={busy || code.length !== 6 || (setup && !qrCode)}>
+          <Button size="lg" busy={busy}>
             Verify and continue
           </Button>
           <FormMessage>{error}</FormMessage>
