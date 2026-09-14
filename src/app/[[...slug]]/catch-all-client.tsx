@@ -5,6 +5,7 @@ import { notFound, usePathname, useRouter } from 'next/navigation'
 import { SessionLiveView } from '@/components/dynamic-views'
 import { SubmissionsView } from '@/components/submissions-view'
 import { DashboardShell } from '@/components/dashboard-shell'
+import { ContentReviewDetail } from '@/components/content-governance'
 
 export function CatchAllClient() {
   const pathname = usePathname()
@@ -19,6 +20,17 @@ export function CatchAllClient() {
     return (
       <DashboardShell>
         <SubmissionsView assessmentId={submissions[1] ?? ''} />
+      </DashboardShell>
+    )
+
+  const contentReview = pathname.match(/^\/content-review\/([^/]+)(?:\/(versions|update))?$/)
+  if (contentReview)
+    return (
+      <DashboardShell>
+        <ContentReviewDetail
+          contentId={decodeURIComponent(contentReview[1] ?? '')}
+          update={contentReview[2] === 'update'}
+        />
       </DashboardShell>
     )
 
